@@ -4,20 +4,20 @@
 [![Telegram](https://img.shields.io/badge/Contact-@ezhigval-2CA5E0)](https://t.me/ezhigval)
 
 # Modulr (Go_Assist)
-> **Konstruktor personal'noy ekosistemy. Sobiray. Podklyuchay. Masshtabiruy.**
+> **Конструктор персональной экосистемы. Собирай. Подключай. Масштабируй.**
 
-Event-driven, context-aware, AI-orchestrated monorepo na Go + React + Python. Sobiray personal'nyy assistent iz LEGO-modulney: finansy, kalendar', tracker, znaniya i drugie. Kazhdyy moduley rabotayet v svoey sfere zhizni (personal, family, business, health), no svyazy mezhdu nimi avtomaticheski stroitsya cherez EventBus i AI.
+Event-driven, context-aware, AI-orchestrated monorepo на Go + React + Python. Собирай персональный ассистент из LEGO-модулей: финансы, календарь, трекер, знания и другие. Каждый модуль работает в своей сфере жизни (personal, family, business, health), но связи между ними автоматически строятся через EventBus и AI.
 
 ---
 
 ## 2.0 Philosophy & Principles
 
-- **LEGO-arkhitektura**: moduli izolirovany, obshchayutsya tol'ko cherez EventBus
-- **Event-First**: nulevaya svyazannost', legkoye testirovaniye, gorizontal'noye masshtabirovaniye
-- **Kontekstnaya izolyatsiya**: `personal` != `family` != `business`, no svyazi rabotayut cherez AI
-- **Gibridnyy AI**: OpenAI dlya MVP -> lokal'nyye modeli dlya prodakshena
-- **Privatnost' po umolchaniyu**: dannyye ne pokidayut server bez yavnogo soglasiya
-- **Progressivnyy frontend**: Telegram Mini App -> PWA -> mobil'nyye -> desktopy
+- **LEGO-архитектура**: модули изолированы, общаются только через EventBus
+- **Event-First**: нулевая связанность, лёгкое тестирование, горизонтальное масштабирование
+- **Контекстная изоляция**: `personal` != `family` != `business`, но связи работают через AI
+- **Гибридный AI**: OpenAI для MVP -> локальные модели для продакшена
+- **Приватность по умолчанию**: данные не покидают сервер без явного согласия
+- **Прогрессивный фронтенд**: Telegram Mini App -> PWA -> мобильные -> десктопы
 
 ---
 
@@ -35,17 +35,17 @@ Domain Modules (finance | calendar | tracker | knowledge | ...)
 Data Layer (PostgreSQL | Redis | Vector DB | Local Storage)
 ```
 
-**Klyuchevyye komponenty:**
-- `core/events/` - EventBus dlya sistemy
-- `core/orchestrator/` - Validatsiya resheniy AI
-- `core/aiengine/` - Reestry modeley i marshrutizatsiya
-- Domain moduli - Izolirovannaya biznes-logika
+**Ключевые компоненты:**
+- `core/events/` - EventBus для системы
+- `core/orchestrator/` - Валидация решений AI
+- `core/aiengine/` - Реестры моделей и маршрутизация
+- Domain модули - Изолированная бизнес-логика
 
-**Dokumentatsiya:**
-- [Proyektmyye pravila](./docs/PROJECT_RULES.md)
-- [Ekosistema i moduli](./docs/ECOSYSTEM_DESIGN.yaml)
-- [AI-arkhitektura](./ai/AI_ARCHITECTURE.md)
-- [Frontend-standarty](./frontend/FRONTEND_RULES.md)
+**Документация:**
+- [Проектные правила](./docs/PROJECT_RULES.md)
+- [Экосистема и модули](./docs/ECOSYSTEM_DESIGN.yaml)
+- [AI-архитектура](./ai/AI_ARCHITECTURE.md)
+- [Frontend-стандарты](./frontend/FRONTEND_RULES.md)
 
 ---
 
@@ -53,120 +53,120 @@ Data Layer (PostgreSQL | Redis | Vector DB | Local Storage)
 
 | Operation \ Context | personal | family | business | health | travel | pets |
 |---------------------|----------|--------|----------|--------|--------|------|
-| **finance** | byudzhet, podpiski | sovmestnyye traty | pribyl'/raskhody | strakhovki, BADy | bilety, vizy | vetklinika, korm |
-| **calendar** | lichnoye vremya | krugki, uzhiny | vstrechi, dedlayny | priyomy vracha | vylety, ekskursii | privivki, progulki |
-| **tracker** | privychki, tseli | domashniye dela | sprinty, OKR | trenirovki, dieta | chek-listy sborov | ukhod, dressirovka |
-| **knowledge** | dnevnik, idei | retsepty, pravila | reglamenty, gaydy | metodiki, simptomy | gidy, frazy | poroda, ratsion |
-| **contacts** | druz'ya, ekspertry | rodstvenniki, uchitelya | kollegi, kliyenty | trenery, vrachi | gidy, poputchiki | vety, grumery |
+| **finance** | бюджет, подписки | совместные траты | прибыль/расходы | страховки, БАДы | билеты, визы | ветклиника, корм |
+| **calendar** | личное время | кружки, ужины | встречи, дедлайны | приёмы врача | вылеты, экскурсии | прививки, прогулки |
+| **tracker** | привычки, цели | домашние дела | спринты, OKR | тренировки, диета | чек-листы сборов | уход, дрессировка |
+| **knowledge** | дневник, идеи | рецепты, правила | регламенты, гайды | методики, симптомы | гиды, фразы | порода, рацион |
+| **contacts** | друзья, эксперты | родственники, учителя | коллеги, клиенты | тренеры, врачи | гиды, попутчики | ветеринары, грумеры |
 
-**Primer kross-svyazi:**  
-`Zametka: "Kupit' moloko po puti domoy"` -> AI raspoznavayet intent ->  
-`calendar/` stavit napominaniye + `finance/` rezerviruyet byudzhet +  
-`logistics/`stroyit marshrut cherez magazin -> vsye sobytiya v EventBus.
+**Пример кросс-связи:**  
+`Заметка: "Купить молоко по пути домой"` -> AI распознаёт интент ->  
+`calendar/` ставит напоминание + `finance/` резервирует бюджет +  
+`logistics/` строит маршрут через магазин -> все события в EventBus.
 
 ---
 
 ## 5.0 AI-Subsystem
 
-**Gibridnyy rezhim:** Remote API (MVP) <-> Local Models (Prod)
+**Гибридный режим:** Remote API (MVP) <-> Local Models (Prod)
 
 | Component | Task | Technologies |
 |-----------|------|-------------|
-| AI Gateway | Marshrutizatsiya zaprosov, PII-redaktsiya | Go, gRPC, middleware |
-| Model Registry | Reestry modeley, versiirovaniye, health-checks | YAML config, Prometheus |
-| Domain Services | Finansy, zdorov'ye, logistika, znaniya | Python, FastAPI, scikit-learn, ONNX |
-| Feedback Loop | Obucheniye na fidbeke, obnovleniye confidence | Async queue, batch training |
-| Vector Memory | Dolgosrochnyy kontekst, assotsiatsii | Chroma/Qdrant, embeddings |
+| AI Gateway | Маршрутизация запросов, PII-редакция | Go, gRPC, middleware |
+| Model Registry | Реестры моделей, версионирование, health-checks | YAML config, Prometheus |
+| Domain Services | Финансы, здоровье, логистика, знания | Python, FastAPI, scikit-learn, ONNX |
+| Feedback Loop | Обучение на фидбеке, обновление confidence | Async queue, batch training |
+| Vector Memory | Долгосрочный контекст, ассоциации | Chroma/Qdrant, embeddings |
 
-**Bezopasnost':**
-- Vse vneshniye zaprosy prokhodyat PII-redaktsiyu
-- `scope`-izolyatsiya: dannyye `personal` ne peredayutsya v `business`
-- `confidence < 0.7` -> trebuyet podtverzhdeniya pol'zovatelya
-- Logi bez personal'nykh dannykh, audit vsekh resheniy
+**Безопасность:**
+- Все внешние запросы проходят PII-редакцию
+- `scope`-изоляция: данные `personal` не передаются в `business`
+- `confidence < 0.7` -> требует подтверждения пользователя
+- Логи без персональных данных, аудит всех решений
 
-**Dokumentatsiya:**
-- [AI Arkhitektura](./ai/AI_ARCHITECTURE.md)
+**Документация:**
+- [AI Архитектура](./ai/AI_ARCHITECTURE.md)
 - [AI Roadmap](./ai/AI_ROADMAP.md)
-- [AI Pravila](./ai/AI_RULES.md)
+- [AI Правила](./ai/AI_RULES.md)
 
 ---
 
 ## 6.0 Frontend & Platforms
 
-**Progressivnoye usileniye:** odin kod -> vse platformy
+**Прогрессивное усиление:** один код -> все платформы
 
 | Platform | Status | Technologies |
 |----------|--------|-------------|
 | Telegram Mini App | MVP | React, @twa-dev/sdk, Vite |
-| PWA (Web) | V razrabotke | React, Vite PWA, IndexedDB |
-| iOS / Android | Planiruyetsya | React Native + Capacitor |
-| Desktop (Win/macOS/Linux) | Planiruyetsya | Tauri (Rust + React) |
-| Wearables (watchOS/Wear OS) | Ideya | Nativnyye komplikatsii |
+| PWA (Web) | В разработке | React, Vite PWA, IndexedDB |
+| iOS / Android | Планируется | React Native + Capacitor |
+| Desktop (Win/macOS/Linux) | Планируется | Tauri (Rust + React) |
+| Wearables (watchOS/Wear OS) | Идея | Нативные компликации |
 
-**Osobennosti:**
-- Kontekstnaya navigatsiya: pereklyuchay sfery zhizni v odin klik
-- Vizualizatsiya svyazey: kartochki pokazyvayut svyazannyye sushchnosti
-- Oflayn-pervyy: keshirovaniye, sinkhronizatsiya pri poyavlenii seti
-- Modul'nyy UI: komponenty = backend-moduli, pereispol'zovaniye 90%+
+**Особенности:**
+- Контекстная навигация: переключай сферы жизни в один клик
+- Визуализация связей: карточки показывают связанные сущности
+- Офлайн-первый: кэширование, синхронизация при появлении сети
+- Модульный UI: компоненты = бэкенд-модули, переиспользование 90%+
 
-**Dokumentatsiya:**
-- [Frontend Pravila](./frontend/FRONTEND_RULES.md)
+**Документация:**
+- [Frontend Правила](./frontend/FRONTEND_RULES.md)
 - [Frontend Roadmap](./frontend/FRONTEND_ROADMAP.md)
 
 ---
 
 ## 7.0 Quick Start
 
-### Trebovaniya
+### Требования
 - Go 1.21+
 - Node.js 18+ / npm 9+
-- Docker + Docker Compose (optsional'no, dlya lokall'nogo AI-steka)
-- PostgreSQL 15+ (ili ispol'zuyte Supabase free tier)
+- Docker + Docker Compose (опционально, для локального AI-стека)
+- PostgreSQL 15+ (или используйте Supabase free tier)
 
-### 1. Klonirovaniye
+### 1. Клонирование
 ```bash
 git clone https://github.com/ezhigval/Go_Assist.git
 cd Go_Assist
 ```
 
-### 2. Nastroyka okruzheniya
+### 2. Настройка окружения
 ```bash
-# Skopiruy shablony konfigigov
+# Скопируй шаблоны конфигов
 cp .env.example .env
 cp config/config.example.yaml config/config.yaml
 
-# Zapolni peremennyye (minimum dlya lokal'nogo zapuska):
+# Заполни переменные (минимум для локального запуска):
 # TELEGRAM_TOKEN=your_bot_token
 # DB_DSN=postgres://user:pass@localhost:5432/modulr?sslmode=disable
-# AI_PROVIDER=openai  # ili "local" dlya samokhostinga
+# AI_PROVIDER=openai  # или "local" для самохостинга
 ```
 
-### 3. Zapusk yadra (Go)
+### 3. Запуск ядра (Go)
 ```bash
 cd core
 go mod tidy
 go run main.go
-# Yadro zapustitsya v rezhime polling, slushayet EventBus
+# Ядро запустится в режиме polling, слушает EventBus
 ```
 
-### 4. Zapusk frontend (Telegram Mini App)
+### 4. Запуск frontend (Telegram Mini App)
 ```bash
 cd frontend
 npm install
 npm run dev:telegram
-# Otkroy bota v Telegram -> nazhmi "Zapustit' veb-prilozheniye"
+# Открой бота в Telegram -> нажми "Запустить веб-приложение"
 ```
 
-### 5. Lokal'nyy AI-stek (optsional'no)
+### 5. Локальный AI-стек (опционально)
 ```bash
 cd ai
 docker compose -f docker-compose.local.yml up -d
-# Zapustit Ollama + FastAPI-servisy dlya lokal'nogo inferensa
+# Запустит Ollama + FastAPI-сервисы для локального инференса
 ```
 
-**Polnaya dokumentatsiya:**
-- [Ustanovka i nastroyka](./docs/INSTALLATION.md)
-- [Konfiguratsiya](./docs/CONFIGURATION.md)
+**Полная документация:**
+- [Установка и настройка](./docs/INSTALLATION.md)
+- [Конфигурация](./docs/CONFIGURATION.md)
 - [API Reference](./docs/API.md)
 
 ---
@@ -176,66 +176,66 @@ docker compose -f docker-compose.local.yml up -d
 **Modulr** - eto otkrytyy proyekt, kotoryy razvivayetsya blagodarya soobshchestvu.
 
 ### License
-Kod rasprostranyayetsya pod litsenziyey MIT.  
-Ty mozhesh:
-- **Ispol'zovat'** v lichnykh i kommercheskikh proyektakh
-- **Modifitsirovat'** i forkat'
-- **Rasprostranyat'** s izmeneniyami
-- **Ne nesi otvetstvennosti** za ispol'zovaniye "kak yest'"
+Код распространяется под лицензией MIT.  
+Ты можешь:
+- **Использовать** в личных и коммерческих проектах
+- **Модифицировать** и форкать
+- **Распространять** с изменениями
+- **Не неси ответственности** за использование "как есть"
 
-### Podderzhka proyekta
-Razrabotka vedyotsya na entuziazme. Lyubaya pomoshch' uskoryayet razvitiye:
+### Поддержка проекта
+Разработка ведётся на энтузиазме. Любая помощь ускоряет развитие:
 - **GitHub Sponsors**
 - **Open Collective** (placeholder)
 - **Crypto: USDT/TRC20** (placeholder)
 
-**Sredstva idut na:**
-- Servery i infrastrukturu dlya demo/testov
-- Tokeny dlya vneshnikh AI-API (na etape MVP)
-- Dizayn, dokumentatsiyu, perevody
-- Oplatu kontrib'yutorov za slozhnyye zadachi
+**Средства идут на:**
+- Серверы и инфраструктуру для демо/тестов
+- Токены для внешних AI-API (на этапе MVP)
+- Дизайн, документацию, переводы
+- Оплату контрибьюторов за сложные задачи
 
-### Prisoedinysya k komande
-Ishchem entuziastov dlya razvitiya proyekta:
+### Присоединяйся к команде
+Ищем энтузиастов для развития проекта:
 
-| Rol' | Zadachi | Stack |
+| Роль | Задачи | Stack |
 |------|---------|-------|
-| **Go Backend** | Yadro, EventBus, moduli, gRPC | Go, pgx, context, sync |
+| **Go Backend** | Ядро, EventBus, модули, gRPC | Go, pgx, context, sync |
 | **React Frontend** | UI, PWA, Telegram Mini App | React, TypeScript, Tailwind |
-| **Python/AI** | Domennyye modeli, inferens, obucheniye | FastAPI, scikit-learn, ONNX |
+| **Python/AI** | Доменные модели, инференс, обучение | FastAPI, scikit-learn, ONNX |
 | **DevOps** | Docker, CI/CD, monitoring, deploy | Docker, GH Actions, Prometheus |
-| **Tech Writer** | Dokumentatsiya, tutoryaly, perevody | Markdown, Docusaurus |
-| **QA / Testing** | Testy, bag-reporty, yuzabiliti | Vitest, Playwright, manual |
+| **Tech Writer** | Документация, туториалы, переводы | Markdown, Docusaurus |
+| **QA / Testing** | Тесты, баг-репорты, юзабилити | Vitest, Playwright, manual |
 
-**Usloviya:**
-- **Udalonno**, gibkiy grafik
-- **Real'nyye production-zadachi**, mentorstvo
-- **Vliyaniye na arkhitekturu i roadmep**
-- **Priznaniye v dokumentatsii**, merch, dolya v premium-modulyakh (optsional'no)
+**Условия:**
+- **Удалённо**, гибкий график
+- **Реальные production-задачи**, менторство
+- **Влияние на архитектуру и роадмеп**
+- **Признание в документации**, мерч, доля в премиум-модулях (опционально)
 
-**Kak nachat':**
-1. Izuchi [PROJECT_RULES.md](./docs/PROJECT_RULES.md) i [CONTRIBUTING.md](./docs/CONTRIBUTING.md)
-2. Naydi zadachu s metkoy `good first issue`
-3. Napishi v [GitHub Discussions](https://github.com/ezhigval/Go_Assist/discussions) ili v Telegram @ezhigval
-4. Sozdai fork, sdelay pull-request
+**Как начать:**
+1. Изучи [PROJECT_RULES.md](./docs/PROJECT_RULES.md) и [CONTRIBUTING.md](./docs/CONTRIBUTING.md)
+2. Найди задачу с меткой `good first issue`
+3. Напиши в [GitHub Discussions](https://github.com/ezhigval/Go_Assist/discussions) или в Telegram @ezhigval
+4. Создай форк, сделай pull-request
 
 ---
 
 ## 9.0 Roadmap & Status
 
-| Etap | Status | Opisaniye |
+| Этап | Статус | Описание |
 |------|--------|-----------|
-| **Proektirovaniye arkhitektury** | **Complete** | Yadro, moduli, AI, frontend |
-| **Dokumentatsiya** | **Complete** | Pravila, ekosistema, roadmepy |
-| **Prototip yadra** | **Complete** | EventBus, Orchestrator, kontrakty |
-| **Realizatsiya MVP** | **In Progress** | Telegram Mini App + 3 modulya (Q1 2025) |
-| **Gibridnyy AI** | **Planned** | Lokal'nyye modeli + feedback loop (Q2 2025) |
-| **PWA + oflayn-rezhim** | **Planned** | (Q3 2025) |
-| **Mobil'nyye prilozheniya** | **Planned** | iOS/Android (Q4 2025) |
-| **Premium-moduli** | **Planned** | Monetizatsiya (2026) |
+| **Проектирование архитектуры** | **Complete** | Ядро, модули, AI, frontend |
+| **Документация** | **Complete** | Правила, экосистема, роадмепы |
+| **Прототип ядра** | **Complete** | EventBus, Orchestrator, контракты |
+| **Реализация MVP** | **In Progress** | Telegram Mini App + 3 модуля (Q1 2025) |
+| **Гибридный AI** | **Planned** | Локальные модели + feedback loop (Q2 2025) |
+| **PWA + офлайн-режим** | **Planned** | (Q3 2025) |
+| **Мобильные приложения** | **Planned** | iOS/Android (Q4 2025) |
+| **Premium-модули** | **Planned** | Монетизация (2026) |
 
-**Detal'nyy plan:**
-- [Osnovnoy Roadmap](./docs/ROADMAP.md)
+**Детальный план:**
+- [Основной Roadmap](./docs/ROADMAP.md)
 - [AI Roadmap](./ai/AI_ROADMAP.md)
 - [Frontend Roadmap](./frontend/FRONTEND_ROADMAP.md)
 
@@ -243,15 +243,15 @@ Ishchem entuziastov dlya razvitiya proyekta:
 
 ## 10.0 Contacts & Support
 
-- **Osnovnoy kontakt:** @ezhigval (Telegram)
-- **Obsuzhdeniya:** [GitHub Discussions](https://github.com/ezhigval/Go_Assist/discussions)
-- **Bag-reporty:** [GitHub Issues](https://github.com/ezhigval/Go_Assist/issues)
+- **Основной контакт:** @ezhigval (Telegram)
+- **Обсуждения:** [GitHub Discussions](https://github.com/ezhigval/Go_Assist/discussions)
+- **Баг-репорты:** [GitHub Issues](https://github.com/ezhigval/Go_Assist/issues)
 - **Email:** hello@modulr.dev (placeholder)
-- **Sayt:** modulr.dev (placeholder)
+- **Сайт:** modulr.dev (placeholder)
 
 ---
 
 <p align="center">
-  <b>Ne pishi prilozheniya. Sobiray ikh.</b><br><br>
-  Modulr - infrastruktura dlya tekh, kto tsenit kontrol', privatnost' i gibkost'.
+  <b>Не пиши приложения. Собирай их.</b><br><br>
+  Modulr - инфраструктура для тех, кто ценит контроль, приватность и гибкость.
 </p>
