@@ -1,0 +1,16 @@
+---
+description: Modulr monorepo — LEGO, события, scope, инженерные стандарты
+alwaysApply: true
+---
+
+# Modulr
+
+Перед изменениями и перед финальным ответом:
+
+1. Соблюдай **PROJECT_RULES.md** в корне репозитория (LEGO, события, scope/tags, context, TODO-формат).
+2. Не добавляй прямых импортов между доменными пакетами (`finance` → `tracker` и т.п.).
+3. Каждый новый `TODO`: `// TODO(modulr-<область>): … Action: …`.
+4. После правок Go запускай **`scripts/modulr-check.sh`**: `vet`+`build` для корня `modulr`, `gofmt` для `organizer/`, `telegram/`, `databases/`.
+5. Значимые правки — строка в **CHANGELOG.md** в корне репозитория.
+
+При конфликте требований пользователя с PROJECT_RULES.md — укажи конфликт и предложи обновление правил через CHANGELOG, а не молчаливое нарушение.
