@@ -1,6 +1,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8)](https://go.dev)
-[![Status](https://img.shields.io/badge/Status-Design_Complete-yellow)](./docs/ROADMAP.md)
+[![Status](https://img.shields.io/badge/Status-Design_Complete-yellow)](./ROADMAP.md)
 [![Telegram](https://img.shields.io/badge/Contact-@ezhigval-2CA5E0)](https://t.me/ezhigval)
 
 # Modulr (Go_Assist)
@@ -42,8 +42,8 @@ Data Layer (PostgreSQL | Redis | Vector DB | Local Storage)
 - Domain модули - Изолированная бизнес-логика
 
 **Документация:**
-- [Проектные правила](./docs/PROJECT_RULES.md)
-- [Экосистема и модули](./docs/ECOSYSTEM_DESIGN.yaml)
+- [Проектные правила](./PROJECT_RULES.md)
+- [Экосистема и модули](./ARCHITECTURE.md#-экосистема-модули)
 - [AI-архитектура](./ai/AI_ARCHITECTURE.md)
 - [Frontend-стандарты](./frontend/FRONTEND_RULES.md)
 
@@ -165,9 +165,9 @@ docker compose -f docker-compose.local.yml up -d
 ```
 
 **Полная документация:**
-- [Установка и настройка](./docs/INSTALLATION.md)
-- [Конфигурация](./docs/CONFIGURATION.md)
-- [API Reference](./docs/API.md)
+- [Установка и настройка](#70-быстрый-старт)
+- [Конфигурация](#70-быстрый-старт)
+- [API Reference](./README.md)
 
 ---
 
@@ -214,7 +214,7 @@ docker compose -f docker-compose.local.yml up -d
 - **Признание в документации**, мерч, доля в премиум-модулях (опционально)
 
 **Как начать:**
-1. Изучи [PROJECT_RULES.md](./docs/PROJECT_RULES.md) и [CONTRIBUTING.md](./docs/CONTRIBUTING.md)
+1. Изучи [PROJECT_RULES.md](./PROJECT_RULES.md) и [CONTRIBUTING.md](./CONTRIBUTTING.md)
 2. Найди задачу с меткой `good first issue`
 3. Напиши в [GitHub Discussions](https://github.com/ezhigval/Go_Assist/discussions) или в Telegram @ezhigval
 4. Создай форк, сделай pull-request
@@ -235,7 +235,7 @@ docker compose -f docker-compose.local.yml up -d
 | **Premium-модули** | **Planned** | Монетизация (2026) |
 
 **Детальный план:**
-- [Основной Roadmap](./docs/ROADMAP.md)
+- [Основной Roadmap](./ROADMAP.md)
 - [AI Roadmap](./ai/AI_ROADMAP.md)
 - [Frontend Roadmap](./frontend/FRONTEND_ROADMAP.md)
 
