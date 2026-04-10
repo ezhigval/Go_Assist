@@ -1,4 +1,14 @@
-# Go Assist - AI-Driven Execution Platform
+---
+title: "Go Assist | Go Assist | Go Assist"
+description: "AI-driven execution platform"
+lang: zh
+version: "0.2"
+lastUpdated: 2026-04-10
+category: docs
+related: []
+---
+
+# Go Assist | Go Assist | Go Assist
 
 <div align="center">
 

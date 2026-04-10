@@ -1,4 +1,14 @@
-# Modules.md
+---
+title: "Modules | Modules | Modules"
+description: "Module development guide and best practices"
+lang: ru
+version: "0.2"
+lastUpdated: 2026-04-10
+category: docs
+related: [concepts, architecture, ai-layer]
+---
+
+# Modules | Modules | Modules
 
 > **Module development guide and best practices**
 

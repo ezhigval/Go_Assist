@@ -1,4 +1,4 @@
-# :bricks: Go_Assist (Modulr)
+# Go_Assist (Modulr)
 
 > AI-driven modular automation platform · Go + React + Python
 
@@ -12,47 +12,36 @@
 
 ---
 
-## :globe_with_meridians: Select Language / Select Language / Select Language
+## Select Language / Select Language / Select Language
 
-| :ru: Russian | :us: English | :cn: Chinese |
+| Russian | English | Chinese |
 |-------------|------------|---------|
 | [Start](./docs/i18n/ru/README.md) | [Get Started](./docs/i18n/en/README.md) | [Start](./docs/i18n/zh/README.md) |
 
 ---
 
-## :books: Documentation Hub
+## Repository Structure
 
-```mermaid
-graph LR
-A[README] --> B[ru]
-A --> C[en] 
-A --> D[zh]
-
-B --> B1[Architecture]
-B --> B2[Concepts]
-B --> B3[Modules]
-
-C --> C1[Architecture]
-C --> C2[Concepts]
-C --> C3[Modules]
-
-D --> D1[Architecture]
-D --> D2[Concepts]
-D --> D3[Modules]
+```
+cmd/           # Entry points (modulr, telegram-bot)
+core/          # Core: EventBus, Orchestrator, AI Engine
+docs/          # Documentation (multilingual)
+  i18n/
+    ru/        # Russian (primary)
+    en/        # English
+    zh/        # Chinese
+  shared/      # Images, diagrams
+  nav/         # Navigation
+modules/       # Domain modules (finance, calendar...)
+config/        # Configurations
+scripts/       # Utilities and validation
 ```
 
-### Quick Links
-
-| Section | :ru: | :us: | :cn: |
-|---------|------|------|------|
-| :bricks: Architecture | [Read](./docs/i18n/ru/architecture.md) | [Read](./docs/i18n/en/architecture.md) | [Read](./docs/i18n/zh/architecture.md) |
-| :puzzle_pieces: Modules | [Read](./docs/i18n/ru/modules.md) | [Read](./docs/i18n/en/modules.md) | [Read](./docs/i18n/zh/modules.md) |
-| :robot: AI Layer | [Read](./docs/i18n/ru/ai.md) | [Read](./docs/i18n/en/ai.md) | [Read](./docs/i18n/zh/ai.md) |
-| :gear: Quick Start | [Read](./docs/i18n/ru/README.md) | [Read](./docs/i18n/en/README.md) | [Read](./docs/i18n/zh/README.md) |
+**Important**: All documentation is in `docs/i18n/`. Root files are for code and configs only.
 
 ---
 
-## :rocket: Quick Start (EN)
+## Quick Start
 
 ```bash
 git clone https://github.com/ezhigval/Go_Assist.git
@@ -62,12 +51,12 @@ cp config/config.example.yaml config/config.yaml
 go run cmd/modulr/main.go
 ```
 
-:information_source: **Full instructions**: :ru: | :us: | :cn:
+:information_source: **Full instructions**: Russian | English | Chinese
 
 ---
 
-## :handshake: Contributing
+## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-:bulb: **All documentation edits should be made ONLY in** `docs/i18n/{ru,en,zh}/`. **Root .md files editing is prohibited.`
+:bulb: **All documentation edits should be made ONLY in** `docs/i18n/{ru,en,zh}/`. **Root .md files editing is prohibited.**`

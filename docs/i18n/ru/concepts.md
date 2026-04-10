@@ -1,4 +1,14 @@
-# Concepts.md
+---
+title: "Concepts | Concepts | Concepts"
+description: "Core concepts and terminology"
+lang: ru
+version: "0.2"
+lastUpdated: 2026-04-10
+category: docs
+related: [architecture, modules, ai-layer]
+---
+
+# Concepts | Concepts | Concepts
 
 > **Core concepts and terminology of the AI-driven execution platform**
 

@@ -1,4 +1,14 @@
-# AI.md
+---
+title: "AI Layer | AI Layer | AI Layer"
+description: "AI layer behavior and integration"
+lang: ru
+version: "0.2"
+lastUpdated: 2026-04-10
+category: docs
+related: [concepts, architecture, modules]
+---
+
+# AI Layer | AI Layer | AI Layer
 
 > **AI layer behavior, response formats, and integration guidelines**
 

@@ -1,40 +1,76 @@
 ---
-title: "Documentation | Documentation | Documentation"
-lang: [en, ru, zh]
-version: v0.2
+title: "Documentation Hub"
+lang: ru
+version: "0.2"
 lastUpdated: 2026-04-10
-related: []
+category: docs
 ---
 
-# Documentation | Documentation | Documentation
+# Documentation Hub
 
-Welcome to the Go Assist documentation hub. This comprehensive guide covers everything you need to know about the AI-driven execution platform.
+## Language Selection / Select Language / Select Language
 
-## Quick Navigation
+| :ru: Russian | :us: English | :cn: Chinese |
+|-------------|------------|---------|
+| [Start](./i18n/ru/README.md) | [Get Started](./i18n/en/README.md) | [Start](./i18n/zh/README.md) |
 
-### Getting Started
-- [Installation Guide](../README.md#quick-start) - Set up Go Assist in minutes
-- [Quick Start](../README.md#quick-start) - Your first automation
-- [Configuration](../README.md#configuration) - Configure your environment
+## Documentation Structure
 
 ### Core Documentation
 
-| Section | Description | Status |
-|---------|-------------|--------|
-| [Architecture](./i18n/ru/architecture/README.md) | System design and data flow | :white_check_mark: Complete |
-| [Concepts](./i18n/ru/concepts/README.md) | Core concepts and terminology | :white_check_mark: Complete |
-| [Modules](./i18n/ru/modules/README.md) | Module development guide | :construction: In Progress |
-| [AI Layer](./i18n/ru/ai/README.md) | AI behavior and integration | :construction: In Progress |
+| Section | :ru: | :us: | :cn: | Status |
+|---------|------|------|------|--------|
+| :bricks: Architecture | [Read](./i18n/ru/architecture.md) | [Read](./i18n/en/architecture.md) | [Read](./i18n/zh/architecture.md) | :white_check_mark: Complete |
+| :puzzle_pieces: Concepts | [Read](./i18n/ru/concepts.md) | [Read](./i18n/en/concepts.md) | [Read](./i18n/zh/concepts.md) | :white_check_mark: Complete |
+| :gear: Modules | [Read](./i18n/ru/modules.md) | [Read](./i18n/en/modules.md) | [Read](./i18n/zh/modules.md) | :construction: In Progress |
+| :robot: AI Layer | [Read](./i18n/ru/ai.md) | [Read](./i18n/en/ai.md) | [Read](./i18n/zh/ai.md) | :construction: In Progress |
 
-### Language Selection
+## Repository Structure
 
-Choose your preferred language:
+```
+Go_Assist/
+|
++-- cmd/           # Entry points (modulr, telegram-bot)
+|
++-- core/          # Core: EventBus, Orchestrator, AI Engine
+|
++-- docs/          # Documentation (multilingual)
+|   |
+|   +-- i18n/
+|   |   |
+|   |   +-- ru/    # Russian (primary)
+|   |   +-- en/    # English
+|   |   +-- zh/    # Chinese
+|   |
+|   +-- shared/    # Images, diagrams
+|   +-- nav/       # Navigation
+|
++-- modules/       # Domain modules (finance, calendar...)
+|
++-- config/        # Configurations
+|
++-- scripts/       # Utilities and validation
+```
 
-| Language | Architecture | Concepts | Modules | AI Layer |
-|----------|-------------|----------|---------|----------|
-| [Russian](./i18n/ru/README.md) | [Architecture](./i18n/ru/architecture/README.md) | [Concepts](./i18n/ru/concepts/README.md) | [Modules](./i18n/ru/modules/README.md) | [AI Layer](./i18n/ru/ai/README.md) |
-| [English](./i18n/en/README.md) | [Architecture](./i18n/en/architecture/README.md) | [Concepts](./i18n/en/concepts/README.md) | [Modules](./i18n/en/modules/README.md) | [AI Layer](./i18n/en/ai/README.md) |
-| [Chinese](./i18n/zh/README.md) | [Architecture](./i18n/zh/architecture/README.md) | [Concepts](./i18n/zh/concepts/README.md) | [Modules](./i18n/zh/modules/README.md) | [AI Layer](./i18n/zh/ai/README.md) |
+**Important**: All documentation is in `docs/i18n/`. Root files are for code and configs only.
+
+## Quick Start
+
+```bash
+git clone https://github.com/ezhigval/Go_Assist.git
+cd Go_Assist
+go mod tidy
+cp config/config.example.yaml config/config.yaml
+go run cmd/modulr/main.go
+```
+
+:information_source: **Full instructions**: :ru: | :us: | :cn:
+
+## Contributing
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+:bulb: **All documentation edits should be made ONLY in** `docs/i18n/{ru,en,zh}/`. **Root .md files editing is prohibited.**
 
 ---
 
