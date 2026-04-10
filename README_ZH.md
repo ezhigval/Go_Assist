@@ -6,6 +6,7 @@
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8)](https://go.dev)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/coverage-85%25-green.svg)]()
+[![Documentation](https://img.shields.io/badge/docs-complete-brightgreen.svg)]()
 
 ## Event-driven AI orchestration platform for automated task execution
 
@@ -27,7 +28,7 @@
 
 ## Quick Overview
 
-Go Assist is a **production-ready AI execution platform** that transforms natural language inputs into automated actions through a modular, event-driven architecture. The system separates concerns between AI planning, core orchestration, and module execution to create a scalable and maintainable automation framework.
+Go Assist - **production-ready AI execution platform**, which transforms natural language inputs into automated actions through modular, event-driven architecture. The system separates responsibilities between AI planning, core orchestration, and module execution to create scalable and maintainable automation framework.
 
 ### Key Features
 
@@ -49,11 +50,19 @@ graph TD
 
 </div>
 
-- **AI Orchestration** - Natural language understanding converted to executable actions
+- **AI Orchestration** - Converting natural language understanding into executable actions
 - **Modular Architecture** - Isolated execution modules for different domains
 - **Event-Driven Design** - Loose coupling between components via EventBus
 - **Multi-Step Execution** - Complex workflows with intermediate results
 - **Strict Contracts** - Well-defined interfaces between AI, Core, and Modules
+
+### What Makes It Different
+
+Unlike traditional backends, Go Assist follows strict separation of concerns:
+- **AI makes decisions**, **Core orchestrates**, **Modules execute**
+- No business logic in orchestrator layer
+- Event-driven communication instead of direct coupling
+- Extensible through plug-in modules
 
 ---
 
@@ -79,6 +88,63 @@ Output Layer (Response, Events)
 - **AI Engine**: Planning and reflection capabilities
 - **EventBus**: Decoupled communication between components
 - **Modules**: Isolated execution units for specific domains
+
+---
+
+## How It Works
+
+### Execution Pipeline
+
+<div align="center">
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Core
+    participant AI as AI Layer
+    participant M as Modules
+    
+    U->>C: Natural Language Input
+    C->>AI: Plan Actions
+    AI-->>C: Structured Actions
+    C->>M: Execute Actions
+    M-->>C: Execution Results
+    C->>AI: Reflect on Results
+    AI-->>C: User Response
+    C-->>U: Formatted Response
+```
+
+</div>
+
+1. **Input Processing** - User input received via HTTP, Telegram, or scheduled jobs
+2. **AI Planning** - Core sends input to AI for analysis and action planning
+3. **Action Generation** - AI returns structured list of actions to execute
+4. **Module Execution** - Core coordinates module execution based on action list
+5. **Result Collection** - Modules return execution results to Core
+6. **AI Reflection** - Core sends results to AI for final response generation
+7. **Response Delivery** - AI-formatted response returned to user
+
+### Example Use Case
+
+**User Request**: "Send weekly report to finance team and schedule follow-up meeting"
+
+**Pipeline Execution**:
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Core
+    participant AI as AI Layer
+    participant M as Modules
+    
+    U->>C: Send weekly report...
+    C->>AI: Plan actions
+    AI-->>C: Actions: finance.generate_report, email.send, calendar.schedule
+    C->>M: Execute actions
+    M-->>C: Results: report generated, email sent, meeting scheduled
+    C->>AI: Reflect on results
+    AI-->>C: Response: "Weekly report sent..."
+    C-->>U: Confirmation with details
+```
 
 ---
 
@@ -145,15 +211,14 @@ curl -X POST http://localhost:8080/api/v1/execute \
 
 <div align="center">
 
-### Complete Documentation Sets
+### Complete Documentation Set
 
-| Language | Architecture | Concepts | Modules | AI Layer |
-|----------|--------------|-----------|---------|----------|
-| [**English**](./docs/en/) | [Architecture_EN.md](./Architecture_EN.md) | [Concepts_EN.md](./Concepts_EN.md) | [Modules_EN.md](./Modules_EN.md) | [AI_EN.md](./AI_EN.md) |
-| [**Russian**](./docs/ru/) | [Architecture_RU.md](./Architecture_RU.md) | [Concepts_RU.md](./Concepts_RU.md) | [Modules_RU.md](./Modules_RU.md) | [AI_RU.md](./AI_RU.md) |
-| [**Chinese**](./docs/zh/) | [Architecture_ZH.md](./Architecture_ZH.md) | [Concepts_ZH.md](./Concepts_ZH.md) | [Modules_ZH.md](./Modules_ZH.md) | [AI_ZH.md](./AI_ZH.md) |
-
-</div>
+| Document | Description | Link |
+|----------|-------------|------|
+| **Architecture** | System design and data flow | [Architecture_ZH.md](./Architecture_ZH.md) |
+| **Concepts** | Core concepts and terminology | [Concepts_ZH.md](./Concepts_ZH.md) |
+| **Modules** | Module development guide | [Modules_ZH.md](./Modules_ZH.md) |
+| **AI Layer** | AI behavior and integration | [AI_ZH.md](./AI_ZH.md) |
 
 ### Documentation Navigation
 
@@ -181,29 +246,39 @@ graph LR
     E --> E3[Model Integration]
 ```
 
+</div>
+
 ---
 
-## Example Use Case
+## Key Concepts
 
-**User Request**: "Send weekly report to finance team and schedule follow-up meeting"
-
-**Pipeline Execution**:
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant C as Core
-    participant AI as AI Layer
-    participant M as Modules
-    
-    U->>C: Send weekly report...
-    C->>AI: Plan actions
-    AI-->>C: Actions: finance.generate_report, email.send, calendar.schedule
-    C->>M: Execute actions
-    M-->>C: Results: report generated, email sent, meeting scheduled
-    C->>AI: Reflect on results
-    AI-->>C: Response: "Weekly report sent..."
-    C-->>U: Confirmation with details
+### Action
+**Action** represents a single, atomic operation that the system should execute:
+```go
+type Action struct {
+    Module string                 `json:"module"`    // Target module name
+    Type   string                 `json:"type"`      // Action type within module
+    Params map[string]interface{} `json:"params"`    // Action parameters
+    ID     string                 `json:"id"`        // Unique action identifier
+    Dependencies []string         `json:"dependencies"` // Action dependencies
+}
 ```
+
+### Result
+**Result** represents the outcome of executing an Action:
+```go
+type Result struct {
+    ActionID string                 `json:"action_id"` // Corresponding action ID
+    Success  bool                   `json:"success"`    // Execution success status
+    Data     interface{}            `json:"data"`       // Result data (if successful)
+    Error    string                 `json:"error"`      // Error message (if failed)
+    Metadata map[string]interface{} `json:"metadata"`   // Additional metadata
+    Duration time.Duration         `json:"duration"`   // Execution time
+}
+```
+
+### Execution Loop
+**Execution Loop** transforms user input into automated actions and responses through a 7-phase process.
 
 ---
 

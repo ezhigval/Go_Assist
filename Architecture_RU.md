@@ -1,4 +1,4 @@
-# 🏗️ Архитектура# Architecture.md
+# Architecture.md
 
 > **AI-driven execution platform with strict separation of concerns**
 
