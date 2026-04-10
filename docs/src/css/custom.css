@@ -1,0 +1,189 @@
+/* Custom CSS for Go Assist Documentation */
+
+/* Variables */
+:root {
+  --ifm-color-primary: #2e8557;
+  --ifm-color-primary-dark: #29784c;
+  --ifm-color-primary-darker: #277148;
+  --ifm-color-primary-darkest: #205d3b;
+  --ifm-color-primary-light: #33925d;
+  --ifm-color-primary-lighter: #359962;
+  --ifm-color-primary-lightest: #3cad6e;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+/* Dark theme variables */
+[data-theme='dark'] {
+  --ifm-color-primary: #25c2a0;
+  --ifm-color-primary-dark: #21af90;
+  --ifm-color-primary-darker: #1fa588;
+  --ifm-color-primary-darkest: #1a8870;
+  --ifm-color-primary-light: #29d5b0;
+  --ifm-color-primary-lighter: #32d8b4;
+  --ifm-color-primary-lightest: #4fddbf;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* Custom styles for documentation */
+.docPage {
+  max-width: none;
+}
+
+/* Language selector styling */
+.language-selector {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem;
+  background: var(--ifm-background-surface-color);
+  border-radius: var(--ifm-border-radius);
+  border: 1px solid var(--ifm-color-emphasis-300);
+}
+
+.language-selector a {
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--ifm-border-radius);
+  text-decoration: none;
+  font-weight: var(--ifm-font-weight-semibold);
+  transition: all 0.2s ease;
+}
+
+.language-selector a:hover {
+  background: var(--ifm-color-primary-lightest);
+  color: var(--ifm-color-primary-darkest);
+}
+
+/* Breadcrumb styling */
+.breadcrumb {
+  margin-bottom: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--ifm-background-surface-color);
+  border-radius: var(--ifm-border-radius);
+  border-left: 4px solid var(--ifm-color-primary);
+}
+
+/* Custom admonition styles */
+.admonition {
+  border-left-width: 4px;
+}
+
+.admonition.tip {
+  border-left-color: #00b894;
+}
+
+.admonition.info {
+  border-left-color: #0984e3;
+}
+
+.admonition.warning {
+  border-left-color: #fdcb6e;
+}
+
+.admonition.danger {
+  border-left-color: #d63031;
+}
+
+/* Code block styling */
+.theme-code-block {
+  border-radius: var(--ifm-border-radius);
+  overflow: hidden;
+}
+
+/* Mermaid diagram styling */
+.mermaid {
+  background: var(--ifm-background-surface-color);
+  border-radius: var(--ifm-border-radius);
+  padding: 1rem;
+  margin: 1rem 0;
+  border: 1px solid var(--ifm-color-emphasis-300);
+}
+
+/* Table styling */
+.markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.markdown table th,
+.markdown table td {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.markdown table th {
+  background: var(--ifm-background-surface-color);
+  font-weight: var(--ifm-font-weight-semibold);
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--ifm-border-radius);
+  font-size: 0.875rem;
+  font-weight: var(--ifm-font-weight-semibold);
+}
+
+.status-badge.complete {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.in-progress {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.todo {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* Custom navigation */
+.custom-nav {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--ifm-color-emphasis-300);
+  margin-bottom: 1rem;
+}
+
+.custom-nav a {
+  color: var(--ifm-color-primary);
+  text-decoration: none;
+  font-weight: var(--ifm-font-weight-semibold);
+  transition: color 0.2s ease;
+}
+
+.custom-nav a:hover {
+  color: var(--ifm-color-primary-dark);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .language-selector {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .custom-nav {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+/* Print styles */
+@media print {
+  .custom-nav,
+  .language-selector,
+  .breadcrumb {
+    display: none;
+  }
+}

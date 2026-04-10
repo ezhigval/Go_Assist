@@ -1,0 +1,160 @@
+{
+  "mainSidebar": {
+    "type": "folder",
+    "label": {
+      "en": "Documentation",
+      "ru": "Documentation",
+      "zh": "Documentation"
+    },
+    "items": [
+      {
+        "type": "doc",
+        "id": "README",
+        "label": {
+          "en": "Getting Started",
+          "ru": "Getting Started", 
+          "zh": "Getting Started"
+        }
+      },
+      {
+        "type": "folder",
+        "label": {
+          "en": "Architecture",
+          "ru": "Architecture",
+          "zh": "Architecture"
+        },
+        "items": [
+          {
+            "type": "doc",
+            "id": "architecture/README",
+            "label": {
+              "en": "Overview",
+              "ru": "Overview",
+              "zh": "Overview"
+            }
+          },
+          {
+            "type": "doc", 
+            "id": "architecture/core-layer",
+            "label": {
+              "en": "Core Layer",
+              "ru": "Core Layer",
+              "zh": "Core Layer"
+            }
+          },
+          {
+            "type": "doc",
+            "id": "architecture/data-flow",
+            "label": {
+              "en": "Data Flow",
+              "ru": "Data Flow", 
+              "zh": "Data Flow"
+            }
+          }
+        ]
+      },
+      {
+        "type": "folder",
+        "label": {
+          "en": "Concepts",
+          "ru": "Concepts",
+          "zh": "Concepts"
+        },
+        "items": [
+          {
+            "type": "doc",
+            "id": "concepts/README",
+            "label": {
+              "en": "Core Concepts",
+              "ru": "Core Concepts",
+              "zh": "Core Concepts"
+            }
+          },
+          {
+            "type": "doc",
+            "id": "concepts/actions",
+            "label": {
+              "en": "Actions",
+              "ru": "Actions",
+              "zh": "Actions"
+            }
+          },
+          {
+            "type": "doc",
+            "id": "concepts/results",
+            "label": {
+              "en": "Results",
+              "ru": "Results",
+              "zh": "Results"
+            }
+          }
+        ]
+      },
+      {
+        "type": "folder",
+        "label": {
+          "en": "Modules",
+          "ru": "Modules",
+          "zh": "Modules"
+        },
+        "items": [
+          {
+            "type": "doc",
+            "id": "modules/README",
+            "label": {
+              "en": "Development Guide",
+              "ru": "Development Guide",
+              "zh": "Development Guide"
+            }
+          },
+          {
+            "type": "doc",
+            "id": "modules/examples",
+            "label": {
+              "en": "Examples",
+              "ru": "Examples",
+              "zh": "Examples"
+            }
+          }
+        ]
+      },
+      {
+        "type": "folder",
+        "label": {
+          "en": "AI Layer",
+          "ru": "AI Layer",
+          "zh": "AI Layer"
+        },
+        "items": [
+          {
+            "type": "doc",
+            "id": "ai/README",
+            "label": {
+              "en": "AI Overview",
+              "ru": "AI Overview",
+              "zh": "AI Overview"
+            }
+          },
+          {
+            "type": "doc",
+            "id": "ai/planning",
+            "label": {
+              "en": "Planning Phase",
+              "ru": "Planning Phase",
+              "zh": "Planning Phase"
+            }
+          },
+          {
+            "type": "doc",
+            "id": "ai/reflection",
+            "label": {
+              "en": "Reflection Phase",
+              "ru": "Reflection Phase",
+              "zh": "Reflection Phase"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,107 @@
+---
+title: "Glossary | Glossary | Glossary"
+lang: [en, ru, zh]
+version: v0.2
+lastUpdated: 2026-04-10
+---
+
+# Glossary | Glossary | Glossary
+
+Technical terms used in Go Assist documentation with translations in all three languages.
+
+## Core Terms
+
+| Term | Russian | Chinese | Description |
+|------|---------|---------|-------------|
+| **EventBus** | EventBus | EventBus | Event-driven communication system between components |
+| **Orchestrator** | Orchestrator | Orchestrator | Central coordination component managing execution pipeline |
+| **Action** | Action | Action | Single atomic operation to be executed |
+| **Result** | Result | Result | Outcome of executing an Action |
+| **Context** | Context | Context | Execution environment and state information |
+| **Module** | Module | Module | Isolated execution unit for specific domain |
+| **Pipeline** | Pipeline | Pipeline | Complete execution flow from input to response |
+
+## AI Layer Terms
+
+| Term | Russian | Chinese | Description |
+|------|---------|---------|-------------|
+| **Planning Phase** | Planning Phase | Planning Phase | AI analyzes input and generates actions |
+| **Reflection Phase** | Reflection Phase | Reflection Phase | AI interprets results and generates response |
+| **AI Engine** | AI Engine | AI Engine | Component responsible for AI operations |
+| **Confidence Score** | Confidence Score | Confidence Score | AI's confidence in generated actions |
+
+## Architecture Terms
+
+| Term | Russian | Chinese | Description |
+|------|---------|---------|-------------|
+| **Core Layer** | Core Layer | Core Layer | Central orchestration layer |
+| **Transport Layer** | Transport Layer | Transport Layer | Protocol-specific request handling |
+| **Data Layer** | Data Layer | Data Layer | Persistent storage and caching |
+| **Input Layer** | Input Layer | Input Layer | Receives external requests |
+| **Output Layer** | Output Layer | Output Layer | Delivers responses to users |
+
+## Development Terms
+
+| Term | Russian | Chinese | Description |
+|------|---------|---------|-------------|
+| **Interface** | Interface | Interface | Go interface definition |
+| **Struct** | Struct | Struct | Go struct definition |
+| **Package** | Package | Package | Go package/module |
+| **Dependency** | Dependency | Dependency | Required component or service |
+| **Contract** | Contract | Contract | Well-defined interface between components |
+
+## Error Handling Terms
+
+| Term | Russian | Chinese | Description |
+|------|---------|---------|-------------|
+| **Error Code** | Error Code | Error Code | Standardized error identifier |
+| **Timeout** | Timeout | Timeout | Operation time limit |
+| **Retry** | Retry | Retry | Attempt operation again after failure |
+| **Fallback** | Fallback | Fallback | Alternative action when primary fails |
+| **Circuit Breaker** | Circuit Breaker | Circuit Breaker | Pattern for handling service failures |
+
+## Performance Terms
+
+| Term | Russian | Chinese | Description |
+|------|---------|---------|-------------|
+| **Latency** | Latency | Latency | Time delay for operation completion |
+| **Throughput** | Throughput | Throughput | Number of operations per time unit |
+| **Scalability** | Scalability | Scalability | Ability to handle increased load |
+| **Caching** | Caching | Caching | Storing frequently accessed data |
+| **Connection Pool** | Connection Pool | Connection Pool | Reusable database connections |
+
+## Security Terms
+
+| Term | Russian | Chinese | Description |
+|------|---------|---------|-------------|
+| **Authentication** | Authentication | Authentication | User identity verification |
+| **Authorization** | Authorization | Authorization | Access permission control |
+| **Encryption** | Encryption | Encryption | Data protection encoding |
+| **Token** | Token | Token | Authentication credential |
+| **Audit Trail** | Audit Trail | Audit Trail | Security event logging |
+
+## Usage Guidelines
+
+### In Documentation
+- Use terms in **bold** on first mention
+- Use `code` format for subsequent mentions
+- Reference this glossary for complex terms
+
+### In Code
+- Keep technical terms in English in code comments
+- Add translations in comment blocks when helpful
+
+```go
+// RU: EventBus handles inter-module communication
+// EN: EventBus handles inter-module communication  
+// ZH: EventBus handles inter-module communication
+type EventBus interface {
+    Publish(event Event) error
+}
+```
+
+### Translation Rules
+1. **Do not translate** technical terms that are universal (EventBus, API, JSON)
+2. **Translate** concepts that have language-specific equivalents
+3. **Be consistent** with terminology across all documentation
+4. **Update glossary** when adding new technical terms

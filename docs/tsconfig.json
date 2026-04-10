@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "esModuleInterop": true,
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "target": "ESNext",
+    "strict": false,
+    "paths": {
+      "@docusaurus/types": [
+        "./node_modules/@docusaurus/types"
+      ],
+      "@docusaurus/core": [
+        "./node_modules/@docusaurus/core"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "docusaurus.config.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "dist"
+  ]
+}
