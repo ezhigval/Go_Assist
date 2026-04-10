@@ -1,4 +1,21 @@
-# Architecture_EN.md
+---
+title: "Architecture | Architecture | Architecture"
+description: "System design and data flow"
+lang: ru
+version: "0.2"
+lastUpdated: 2026-04-10
+category: architecture
+related: [concepts, modules, ai-layer]
+---
+
+> :information_source: **Language**: 
+> [**RU**](./architecture.md) | 
+> [**EN**](../en/architecture.md) | 
+> [**ZH**](../zh/architecture.md)
+> 
+> :information_source: *You are here: Home -> Architecture*
+
+# Architecture | Architecture | Architecture
 
 > **AI-driven execution platform with strict separation of concerns**
 

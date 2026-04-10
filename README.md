@@ -1,251 +1,73 @@
-# Go Assist - AI-Driven Execution Platform
+# :bricks: Go_Assist (Modulr)
+
+> AI-driven modular automation platform · Go + React + Python
 
 <div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8)](https://go.dev)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
-[![Coverage](https://img.shields.io/badge/coverage-85%25-green.svg)]()
-
-## Event-driven AI orchestration platform for automated task execution
+[![Docs](https://img.shields.io/badge/Docs-RU%2FEN%2FZH-brightgreen)](./docs)
 
 </div>
 
 ---
 
-## Choose Your Language / Select Your Language / Choose Language
+## :globe_with_meridians: Select Language / Select Language / Select Language
 
-<div align="center">
-
-| **English** | **Russian** | **Chinese** |
-|-------------|------------|-------------|
-| [![English](https://img.shields.io/badge/English-blue.svg)](./README_EN.md) | [![Russian](https://img.shields.io/badge/Russian-red.svg)](./README_RU.md) | [![Chinese](https://img.shields.io/badge/Chinese-orange.svg)](./README_ZH.md) |
-
-</div>
+| :ru: Russian | :us: English | :cn: Chinese |
+|-------------|------------|---------|
+| [Start](./docs/i18n/ru/README.md) | [Get Started](./docs/i18n/en/README.md) | [Start](./docs/i18n/zh/README.md) |
 
 ---
 
-## Quick Overview
-
-Go Assist is a **production-ready AI execution platform** that transforms natural language inputs into automated actions through a modular, event-driven architecture. The system separates concerns between AI planning, core orchestration, and module execution to create a scalable and maintainable automation framework.
-
-### Key Features
-
-<div align="center">
-
-```mermaid
-graph TD
-    A[User Input] --> B[AI Planning]
-    B --> C[Module Execution]
-    C --> D[AI Reflection]
-    D --> E[User Response]
-    
-    style A fill:#e1f5fe
-    style B fill:#f3e5f5
-    style C fill:#e8f5e8
-    style D fill:#fff3e0
-    style E fill:#fce4ec
-```
-
-</div>
-
-- **AI Orchestration** - Natural language understanding converted to executable actions
-- **Modular Architecture** - Isolated execution modules for different domains
-- **Event-Driven Design** - Loose coupling between components via EventBus
-- **Multi-Step Execution** - Complex workflows with intermediate results
-- **Strict Contracts** - Well-defined interfaces between AI, Core, and Modules
-
----
-
-## Architecture Overview
-
-```
-Input Layer (HTTP, Telegram, Jobs)
-    |
-CORE Layer (Orchestrator)
-    |       \
-    |        \
-AI Layer     EventBus
-    |           |
-    |      Modules Layer
-    |           |
-    |      Data Layer
-    |
-Output Layer (Response, Events)
-```
-
-**Core Components:**
-- **Orchestrator**: Event lifecycle management and coordination
-- **AI Engine**: Planning and reflection capabilities
-- **EventBus**: Decoupled communication between components
-- **Modules**: Isolated execution units for specific domains
-
----
-
-## Quick Start
-
-### Requirements
-- Go 1.21+
-- PostgreSQL 15+
-- Redis 6+
-- OpenAI API key (or local AI model)
-
-### Installation
-
-```bash
-# Clone repository
-git clone https://github.com/ezhigval/Go_Assist.git
-cd Go_Assist
-
-# Install dependencies
-go mod tidy
-
-# Setup configuration
-cp config/config.example.yaml config/config.yaml
-cp .env.example .env
-
-# Configure environment variables
-# AI_PROVIDER=openai
-# AI_API_KEY=your_openai_key
-# DB_DSN=postgres://user:pass@localhost:5432/goassist?sslmode=disable
-# REDIS_URL=redis://localhost:6379
-```
-
-### Running the System
-
-```bash
-# Start the core service
-go run main.go
-
-# Start with specific transport
-go run cmd/ai-assistant/main.go    # HTTP API
-go run cmd/telegram-bot/main.go     # Telegram Bot
-go run cmd/modulr/main.go          # CLI interface
-```
-
-### Verify Installation
-
-```bash
-# Test AI orchestration
-curl -X POST http://localhost:8080/api/v1/execute \
-  -H "Content-Type: application/json" \
-  -d '{"input": "What modules are available?"}'
-
-# Expected response
-{
-  "response": "Available modules: finance, calendar, email, tracker, knowledge",
-  "actions_executed": 0,
-  "execution_time": "1.2s"
-}
-```
-
----
-
-## Documentation Structure
-
-<div align="center">
-
-### Complete Documentation Sets
-
-| Language | Architecture | Concepts | Modules | AI Layer |
-|----------|--------------|-----------|---------|----------|
-| [**English**](./docs/en/) | [Architecture_EN.md](./Architecture_EN.md) | [Concepts_EN.md](./Concepts_EN.md) | [Modules_EN.md](./Modules_EN.md) | [AI_EN.md](./AI_EN.md) |
-| [**Russian**](./docs/ru/) | [Architecture_RU.md](./Architecture_RU.md) | [Concepts_RU.md](./Concepts_RU.md) | [Modules_RU.md](./Modules_RU.md) | [AI_RU.md](./AI_RU.md) |
-| [**Chinese**](./docs/zh/) | [Architecture_ZH.md](./Architecture_ZH.md) | [Concepts_ZH.md](./Concepts_ZH.md) | [Modules_ZH.md](./Modules_ZH.md) | [AI_ZH.md](./AI_ZH.md) |
-
-</div>
-
-### Documentation Navigation
+## :books: Documentation Hub
 
 ```mermaid
 graph LR
-    A[README] --> B[Architecture]
-    A --> C[Concepts]
-    A --> D[Modules]
-    A --> E[AI Layer]
-    
-    B --> B1[System Design]
-    B --> B2[Data Flow]
-    B --> B3[Core Components]
-    
-    C --> C1[Actions]
-    C --> C2[Results]
-    C --> C3[Context]
-    
-    D --> D1[Development Guide]
-    D --> D2[Best Practices]
-    D --> D3[Examples]
-    
-    E --> E1[Planning Phase]
-    E --> E2[Reflection Phase]
-    E --> E3[Model Integration]
+A[README] --> B[ru]
+A --> C[en] 
+A --> D[zh]
+
+B --> B1[Architecture]
+B --> B2[Concepts]
+B --> B3[Modules]
+
+C --> C1[Architecture]
+C --> C2[Concepts]
+C --> C3[Modules]
+
+D --> D1[Architecture]
+D --> D2[Concepts]
+D --> D3[Modules]
 ```
+
+### Quick Links
+
+| Section | :ru: | :us: | :cn: |
+|---------|------|------|------|
+| :bricks: Architecture | [Read](./docs/i18n/ru/architecture.md) | [Read](./docs/i18n/en/architecture.md) | [Read](./docs/i18n/zh/architecture.md) |
+| :puzzle_pieces: Modules | [Read](./docs/i18n/ru/modules.md) | [Read](./docs/i18n/en/modules.md) | [Read](./docs/i18n/zh/modules.md) |
+| :robot: AI Layer | [Read](./docs/i18n/ru/ai.md) | [Read](./docs/i18n/en/ai.md) | [Read](./docs/i18n/zh/ai.md) |
+| :gear: Quick Start | [Read](./docs/i18n/ru/README.md) | [Read](./docs/i18n/en/README.md) | [Read](./docs/i18n/zh/README.md) |
 
 ---
 
-## Example Use Case
+## :rocket: Quick Start (EN)
 
-**User Request**: "Send weekly report to finance team and schedule follow-up meeting"
-
-**Pipeline Execution**:
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant C as Core
-    participant AI as AI Layer
-    participant M as Modules
-    
-    U->>C: Send weekly report...
-    C->>AI: Plan actions
-    AI-->>C: Actions: finance.generate_report, email.send, calendar.schedule
-    C->>M: Execute actions
-    M-->>C: Results: report generated, email sent, meeting scheduled
-    C->>AI: Reflect on results
-    AI-->>C: Response: "Weekly report sent..."
-    C-->>U: Confirmation with details
+```bash
+git clone https://github.com/ezhigval/Go_Assist.git
+cd Go_Assist
+go mod tidy
+cp config/config.example.yaml config/config.yaml
+go run cmd/modulr/main.go
 ```
+
+:information_source: **Full instructions**: :ru: | :us: | :cn:
 
 ---
 
-## Contributing
-
-<div align="center">
-
-### We welcome contributions! 
+## :handshake: Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
-#### Development Setup
-
-```bash
-# Run tests
-go test ./...
-
-# Run with coverage
-go test -cover ./...
-
-# Lint code
-golangci-lint run
-
-# Format code
-go fmt ./...
-```
-
-</div>
-
----
-
-## License
-
-<div align="center">
-
-Licensed under the MIT License. See [LICENSE](./LICENSE) for details.
-
----
-
-<p align="center">
-  <b>AI orchestrates, Core coordinates, Modules execute.</b><br><br>
-  <i>Go Assist - Infrastructure for intelligent automation.</i>
-</p>
-
-</div>
+:bulb: **All documentation edits should be made ONLY in** `docs/i18n/{ru,en,zh}/`. **Root .md files editing is prohibited.`
