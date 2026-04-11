@@ -139,10 +139,20 @@ cp config/config.example.yaml config/config.yaml
 
 # Заполни переменные (минимум для локального запуска):
 # TELEGRAM_TOKEN=your_bot_token
-# DB_DSN=postgres://user:pass@localhost:5432/modulr?sslmode=disable
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_NAME=telegram_bot
+# DB_USER=postgres              # локальный quick start
+# DB_PASS=
+# DB_SSLMODE=disable
 # AI_PROVIDER=local   # или оставь unset/"stub" для детерминированного fallback
 # AI_PROVIDER_BASE_URL=http://127.0.0.1:8000
 # AI_ALLOW_STUB_FALLBACK=true
+#
+# Для RLS-effective transport/databases setup:
+# go run ./databases/cmd/databases app-role-sql -role=modulr_app
+# Выполни SQL под DBA/owner role, затем переключи DB_USER/DB_PASS
+# и проверь go run ./databases/cmd/databases rls-status
 ```
 
 ### 3. Запуск ядра (Go)
@@ -184,7 +194,8 @@ go run ./cmd/telegram
 # /start и обычные текстовые сообщения уходят в runtime ingress корневого модуля
 # Активный контекст можно переключить командой /scope business (или другой segment)
 # Опционально для PostgreSQL-backed transport persistence:
-# TELEGRAM_STATE_STORE=postgres DB_HOST=localhost DB_PORT=5432 DB_NAME=telegram_bot DB_USER=postgres DB_PASS=...
+# TELEGRAM_STATE_STORE=postgres DB_HOST=localhost DB_PORT=5432 DB_NAME=telegram_bot DB_USER=modulr_app DB_PASS=...
+# Для локального superuser bootstrap DB_USER=postgres тоже допустим, но rls-status предупредит о bypass
 # На staging/production держи DB_AUTO_MIGRATE=false и запускай migrations отдельным deployment step.
 # В этом режиме sessions и trace-связанный event_journal пишутся в databases/
 ```
