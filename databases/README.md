@@ -33,6 +33,7 @@
 ```bash
 go run ./cmd/databases up
 go run ./cmd/databases status
+go run ./cmd/databases rls-status
 go run ./cmd/databases down -steps=1
 go run ./cmd/databases journal -trace=<trace_id> -scope=personal
 ```
@@ -92,6 +93,12 @@ DB-enforced policy:
 - repository-слой теперь оборачивает append/read journal paths в транзакцию и выставляет `SET LOCAL modulr.allowed_scopes=<csv>` или `SET LOCAL modulr.scope_bypass=on`;
 - Go-side `WHERE scope = ANY(...)` сохранён как дополнительная защита и для обратной совместимости при rollback миграции;
 - для реального прод-эффекта приложение должно подключаться **не** под PostgreSQL superuser: суперпользователь обходит RLS даже при `FORCE ROW LEVEL SECURITY`.
+
+Диагностика готовности:
+
+- `go run ./cmd/databases rls-status` показывает, под каким DB role работает текущее соединение;
+- команда проверяет `rolsuper`, `rolbypassrls`, `relrowsecurity`, `relforcerowsecurity` и наличие policy `event_journal_scope_select` / `event_journal_scope_insert`;
+- `databases.Start()` теперь логирует тот же readiness snapshot и явно предупреждает, если приложение подключено под superuser или BYPASSRLS role.
 
 Минимальный запрос для replay одного trace:
 
