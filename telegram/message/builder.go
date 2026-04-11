@@ -17,8 +17,8 @@ func BuildMessageConfig(chatID int64, resp *handler.Response) (tgbotapi.Chattabl
 	if resp.Edit {
 		msg := tgbotapi.NewEditMessageText(chatID, 0, resp.Text)
 		msg.ParseMode = resp.ParseMode
-		if resp.Keyboard != nil {
-			msg.ReplyMarkup = resp.Keyboard
+		if kb, ok := resp.Keyboard.(tgbotapi.InlineKeyboardMarkup); ok {
+			msg.ReplyMarkup = &kb
 		}
 		return msg, nil
 	}

@@ -26,13 +26,13 @@ export default {
         // Scope colors for context indication
         scope: {
           personal: '#10b981',
-          work: '#3b82f6',
           family: '#f59e0b',
+          work: '#3b82f6',
+          business: '#0ea5e9',
           health: '#ef4444',
-          learning: '#8b5cf6',
-          finance: '#06b6d4',
-          creative: '#ec4899',
-          social: '#84cc16',
+          travel: '#8b5cf6',
+          pets: '#f97316',
+          assets: '#64748b',
         },
         // Semantic colors
         semantic: {

@@ -15,18 +15,23 @@ var _ AIEngine = (*Engine)(nil)
 
 // Engine реализует AIEngine: маршрутизация моделей, таймауты, заглушка инференса.
 type Engine struct {
-	mu      sync.RWMutex
-	router  *ModelRouter
-	fb      *feedbackState
-	cancel  context.CancelFunc
-	started bool
+	mu       sync.RWMutex
+	router   *ModelRouter
+	fb       *feedbackState
+	cfg      Config
+	provider inferenceProvider
+	cancel   context.CancelFunc
+	started  bool
 }
 
 // NewEngine создаёт движок с роутером по умолчанию.
 func NewEngine() *Engine {
+	cfg := LoadConfig()
 	return &Engine{
-		router: NewModelRouter(),
-		fb:     newFeedbackState(),
+		router:   NewModelRouter(),
+		fb:       newFeedbackState(),
+		cfg:      cfg,
+		provider: newInferenceProvider(cfg),
 	}
 }
 
@@ -93,15 +98,69 @@ func (e *Engine) Analyze(ctx context.Context, req Request) ([]Decision, error) {
 	if len(models) == 0 {
 		return nil, fmt.Errorf("aiengine: no models available")
 	}
-	// STUB: Real inference requires provider calls per ModelSpec with context timeout/cancellation, aggregating []Decision without raw text storage.
-	decs := e.stubInfer(ctx, req, models)
+
+	decs, err := e.infer(ctx, req, models)
+	if err != nil {
+		return nil, err
+	}
 	for i := range decs {
-		mid, _ := decs[i].Parameters["_model_id"].(string)
-		w := e.fb.Weight(mid)
+		w := e.fb.Weight(decs[i].ModelID)
 		decs[i].Confidence = clamp01(decs[i].Confidence * w)
-		delete(decs[i].Parameters, "_model_id")
 	}
 	return decs, nil
+}
+
+func (e *Engine) infer(ctx context.Context, req Request, models []ModelSpec) ([]Decision, error) {
+	if e.provider == nil {
+		return e.normalizeDecisions(req, models, e.stubInfer(ctx, req, models)), nil
+	}
+
+	decs, err := e.provider.Infer(ctx, req, models)
+	if err == nil && len(decs) > 0 {
+		return e.normalizeDecisions(req, models, decs), nil
+	}
+
+	if !e.cfg.AllowStubFallback {
+		if err != nil {
+			return nil, fmt.Errorf("aiengine: provider infer: %w", err)
+		}
+		return nil, fmt.Errorf("aiengine: provider returned no decisions")
+	}
+
+	if err != nil {
+		log.Printf("aiengine: provider infer failed, fallback to stub: %v", err)
+	} else {
+		log.Printf("aiengine: provider returned no decisions, fallback to stub")
+	}
+	return e.normalizeDecisions(req, models, e.stubInfer(ctx, req, models)), nil
+}
+
+func (e *Engine) normalizeDecisions(req Request, models []ModelSpec, decs []Decision) []Decision {
+	out := append([]Decision(nil), decs...)
+	now := time.Now()
+	primaryModelID := "llm_primary"
+	if len(models) > 0 && models[0].ID != "" {
+		primaryModelID = models[0].ID
+	}
+
+	for i := range out {
+		if out[i].ID == "" {
+			out[i].ID = newDecisionID()
+		}
+		if out[i].Scope == "" {
+			out[i].Scope = effectiveScope(req)
+		}
+		if out[i].ModelID == "" {
+			out[i].ModelID = primaryModelID
+		}
+		if out[i].CreatedAt.IsZero() {
+			out[i].CreatedAt = now
+		}
+		if out[i].Parameters == nil {
+			out[i].Parameters = map[string]any{}
+		}
+	}
+	return out
 }
 
 func clamp01(x float64) float64 {
@@ -130,7 +189,8 @@ func (e *Engine) stubInfer(ctx context.Context, req Request, models []ModelSpec)
 			ID:         newDecisionID(),
 			Target:     "calendar",
 			Action:     "create_event",
-			Parameters: map[string]any{"title": trimSnippet(req.Text, 80), "_model_id": primary},
+			Parameters: map[string]any{"title": trimSnippet(req.Text, 80)},
+			ModelID:    primary,
 			Confidence: 0.95,
 			Scope:      effectiveScope(req),
 			CreatedAt:  now,
@@ -141,7 +201,8 @@ func (e *Engine) stubInfer(ctx context.Context, req Request, models []ModelSpec)
 			ID:         newDecisionID(),
 			Target:     "tracker",
 			Action:     "create_reminder",
-			Parameters: map[string]any{"note": trimSnippet(req.Text, 120), "_model_id": primary},
+			Parameters: map[string]any{"note": trimSnippet(req.Text, 120)},
+			ModelID:    primary,
 			Confidence: 0.88,
 			Scope:      effectiveScope(req),
 			CreatedAt:  now,
@@ -152,7 +213,8 @@ func (e *Engine) stubInfer(ctx context.Context, req Request, models []ModelSpec)
 			ID:         newDecisionID(),
 			Target:     "maps",
 			Action:     "build_route",
-			Parameters: map[string]any{"query": trimSnippet(req.Text, 120), "_model_id": "route_planner"},
+			Parameters: map[string]any{"query": trimSnippet(req.Text, 120)},
+			ModelID:    "route_planner",
 			Confidence: 0.91,
 			Scope:      effectiveScope(req),
 			CreatedAt:  now,
@@ -163,7 +225,8 @@ func (e *Engine) stubInfer(ctx context.Context, req Request, models []ModelSpec)
 			ID:         newDecisionID(),
 			Target:     "knowledge",
 			Action:     "save_query",
-			Parameters: map[string]any{"text": trimSnippet(req.Text, 200), "_model_id": primary},
+			Parameters: map[string]any{"text": trimSnippet(req.Text, 200)},
+			ModelID:    primary,
 			Confidence: 0.55,
 			Scope:      effectiveScope(req),
 			CreatedAt:  now,

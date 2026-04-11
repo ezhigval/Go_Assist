@@ -1,151 +1,35 @@
-/**
- * Telegram WebApp Provider
- * Integrates with Telegram Mini App SDK and provides platform-specific functionality
- */
-
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import type { User, PlatformCapabilities, Theme } from '@modulr/core-types';
-
-// ============================================================================
-// TELEGRAM WEBAPP TYPES
-// ============================================================================
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import type { PlatformCapabilities, Theme, User } from '@modulr/core-types';
 
 interface TelegramWebApp {
-  ready: () => void;
-  expand: () => void;
-  close: () => void;
-  sendData: (data: string) => void;
-  openLink: (url: string) => void;
-  openTelegramLink: (url: string) => void;
-  openInvoice: (url: string, callback: (status: string) => void) => void;
-  showPopup: (params: PopupParams, callback: (buttonId: string) => void) => void;
-  showAlert: (message: string, callback: () => void) => void;
-  showConfirm: (message: string, callback: (confirmed: boolean) => void) => void;
-  requestWriteAccess: (callback: (granted: boolean) => void) => void;
-  requestContact: (callback: (shared: boolean) => void) => void;
-  initData: string;
-  initDataUnsafe: {
-    query_id?: string;
+  ready?: () => void;
+  expand?: () => void;
+  close?: () => void;
+  sendData?: (data: string) => void;
+  showAlert?: (message: string, callback?: () => void) => void;
+  showConfirm?: (message: string, callback: (confirmed: boolean) => void) => void;
+  colorScheme?: 'light' | 'dark';
+  initDataUnsafe?: {
     user?: {
       id: number;
-      first_name: string;
-      last_name?: string;
       username?: string;
-      language_code?: string;
-      is_premium?: boolean;
-      photo_url?: string;
-    };
-    receiver?: {
-      id: number;
-      first_name: string;
-      last_name?: string;
-      username?: string;
-      language_code?: string;
-    };
-    chat?: {
-      id: number;
       first_name?: string;
       last_name?: string;
-      username?: string;
-      type: 'private' | 'group' | 'supergroup' | 'channel';
-      title: string;
-      photo_url?: string;
+      language_code?: string;
     };
-    start_param?: string;
-    auth_date: number;
-    hash: string;
   };
-  theme: {
-    bg_color?: string;
-    text_color?: string;
-    hint_color?: string;
-    link_color?: string;
-    button_color?: string;
-    button_text_color?: string;
-    header_bg_color?: string;
-    accent_text_color?: string;
-    section_bg_color?: string;
-    section_header_text_color?: string;
-    subtitle_text_color?: string;
-    destructive_text_color?: string;
-  };
-  colorScheme: 'light' | 'dark';
-  viewport: {
-    height: number;
-    width: number;
-    isExpanded: boolean;
-    stable_height: number;
-    expand: () => void;
-    isStateStable: boolean;
-  };
-  onEvent: (eventType: string, callback: () => void) => void;
-  offEvent: (eventType: string, callback: () => void) => void;
-  MainButton: {
-    text: string;
-    color: string;
-    textColor: string;
-    isVisible: boolean;
-    isActive: boolean;
+  MainButton?: {
     setText: (text: string) => void;
-    onClick: (callback: () => void) => void;
-    offClick: (callback: () => void) => void;
+    onClick: (cb: () => void) => void;
     show: () => void;
     hide: () => void;
-    enable: () => void;
-    disable: () => void;
-    showProgress: (leaveActive?: boolean) => void;
-    hideProgress: () => void;
-    setParams: (params: { text?: string; color?: string; text_color?: string }) => void;
   };
-  BackButton: {
-    isVisible: boolean;
+  BackButton?: {
+    onClick: (cb: () => void) => void;
     show: () => void;
     hide: () => void;
-    onClick: (callback: () => void) => void;
-    offClick: (callback: () => void) => void;
-  };
-  SettingsButton: {
-    isVisible: boolean;
-    onClick: (callback: () => void) => void;
-    offClick: (callback: () => void) => void;
-  };
-  HapticFeedback: {
-    impactOccurred: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void;
-    notificationOccurred: (type: 'error' | 'success' | 'warning') => void;
-    selectionChanged: () => void;
-  };
-  CloudStorage: {
-    setItem: (key: string, value: string, callback: (error?: Error) => void) => void;
-    getItem: (key: string, callback: (error?: Error, value?: string) => void) => void;
-    removeItem: (key: string, callback: (error?: Error) => void) => void;
-    getKeys: (callback: (error?: Error, keys?: string[]) => void) => void;
-  };
-  BiometricManager: {
-    isBiometricAvailable: boolean;
-    isAccessGranted: boolean;
-    isAccessRequested: boolean;
-    updateBiometricToken: (token: string, callback: (updated: boolean) => void) => void;
-    authenticate: (reason: string, callback: (authenticated: boolean, token?: string) => void) => void;
-    openSettings: () => void;
-    requestAccess: (callback: (granted: boolean) => void) => void;
   };
 }
-
-interface PopupParams {
-  title?: string;
-  message: string;
-  buttons: PopupButton[];
-}
-
-interface PopupButton {
-  id: string;
-  type?: 'default' | 'ok' | 'close' | 'cancel' | 'destructive';
-  text: string;
-}
-
-// ============================================================================
-// TELEGRAM CONTEXT TYPES
-// ============================================================================
 
 interface TelegramState {
   webApp: TelegramWebApp | null;
@@ -157,7 +41,6 @@ interface TelegramState {
 }
 
 interface TelegramContextValue extends TelegramState {
-  // Actions
   initialize: () => void;
   showMainButton: (text: string, onClick: () => void) => void;
   hideMainButton: () => void;
@@ -170,431 +53,146 @@ interface TelegramContextValue extends TelegramState {
   expandViewport: () => void;
   closeWebApp: () => void;
   sendDataToBot: (data: string) => void;
-  
-  // Storage
   setStorageItem: (key: string, value: string) => Promise<void>;
   getStorageItem: (key: string) => Promise<string | null>;
   removeStorageItem: (key: string) => Promise<void>;
-  
-  // Biometrics
   authenticateBiometric: (reason: string) => Promise<boolean>;
   requestBiometricAccess: () => Promise<boolean>;
 }
 
-// ============================================================================
-// CONTEXT
-// ============================================================================
+const fallbackCapabilities: PlatformCapabilities = {
+  platform: 'telegram',
+  hasNotifications: true,
+  hasGeolocation: false,
+  hasCamera: false,
+  hasBiometrics: false,
+  hasOfflineSupport: false,
+  hasVoiceInput: false,
+  screenInfo: {
+    width: 0,
+    height: 0,
+    density: 1,
+    orientation: 'portrait',
+    isSmall: true,
+    isTouch: true,
+  },
+};
 
 const TelegramContext = createContext<TelegramContextValue | undefined>(undefined);
 
-interface TelegramProviderProps {
-  children: ReactNode;
+function parseUser(webApp: TelegramWebApp | null): User | null {
+  const tgUser = webApp?.initDataUnsafe?.user;
+  if (!tgUser) return null;
+  return {
+    id: String(tgUser.id),
+    username: tgUser.username ?? '',
+    displayName: [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || tgUser.username || 'Telegram User',
+    roles: ['user'],
+    preferences: {
+      language: tgUser.language_code || 'ru',
+      theme: 'auto',
+      notifications: { push: true, email: false, inApp: true, types: ['system', 'reminder', 'message'] },
+      privacy: { shareAnalytics: false, shareCrashReports: false, shareUsageData: false, dataRetention: '90days' },
+      accessibility: { fontSize: 'base', highContrast: false, reduceMotion: false, screenReader: false, keyboardNavigation: true },
+    },
+    session: {
+      token: '',
+      refreshToken: '',
+      expiresAt: 0,
+      isActive: true,
+      lastActivity: Date.now(),
+    },
+  };
 }
 
-export function TelegramProvider({ children }: TelegramProviderProps) {
+export function TelegramProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<TelegramState>({
     webApp: null,
     user: null,
     theme: 'light',
-    capabilities: {
-      platform: 'telegram',
-      hasNotifications: true,
-      hasGeolocation: false,
-      hasCamera: false,
-      hasBiometrics: false,
-      hasOfflineSupport: false,
-      hasVoiceInput: false,
-      screenInfo: {
-        width: 0,
-        height: 0,
-        density: 1,
-        orientation: 'portrait',
-        isSmall: true,
-        isTouch: true,
-      },
-    },
+    capabilities: fallbackCapabilities,
     isReady: false,
     error: null,
   });
 
-  // ============================================================================
-  // INITIALIZATION
-  // ============================================================================
-
   const initialize = () => {
-    if (typeof window === 'undefined') return;
-
-    const telegramWebApp = (window as any).Telegram?.WebApp as TelegramWebApp;
-    
-    if (!telegramWebApp) {
-      setState(prev => ({
-        ...prev,
-        error: 'Telegram WebApp SDK not available',
-      }));
+    const maybeTelegram = (window as unknown as { Telegram?: { WebApp?: TelegramWebApp } }).Telegram?.WebApp ?? null;
+    if (!maybeTelegram) {
+      setState((prev) => ({ ...prev, isReady: false, error: 'Telegram WebApp SDK not found' }));
       return;
     }
 
-    try {
-      // Initialize WebApp
-      telegramWebApp.ready();
+    maybeTelegram.ready?.();
+    maybeTelegram.expand?.();
 
-      // Parse user data
-      const user = parseTelegramUser(telegramWebApp.initDataUnsafe.user);
-
-      // Parse theme
-      const theme = telegramWebApp.colorScheme === 'dark' ? 'dark' : 'light';
-
-      // Get capabilities
-      const capabilities = parseTelegramCapabilities(telegramWebApp);
-
-      setState({
-        webApp: telegramWebApp,
-        user,
-        theme,
-        capabilities,
-        isReady: true,
-        error: null,
-      });
-
-      // Set up event listeners
-      setupEventListeners(telegramWebApp);
-
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'Failed to initialize Telegram WebApp',
-      }));
-    }
+    setState((prev) => ({
+      ...prev,
+      webApp: maybeTelegram,
+      user: parseUser(maybeTelegram),
+      theme: maybeTelegram.colorScheme === 'dark' ? 'dark' : 'light',
+      isReady: true,
+      error: null,
+      capabilities: {
+        ...prev.capabilities,
+        screenInfo: {
+          ...prev.capabilities.screenInfo,
+          width: window.innerWidth,
+          height: window.innerHeight,
+          density: window.devicePixelRatio || 1,
+          orientation: window.innerWidth > window.innerHeight ? 'landscape' : 'portrait',
+          isSmall: window.innerWidth < 768,
+          isTouch: true,
+        },
+      },
+    }));
   };
 
   useEffect(() => {
     initialize();
   }, []);
 
-  // ============================================================================
-  // EVENT LISTENERS
-  // ============================================================================
-
-  const setupEventListeners = (webApp: TelegramWebApp) => {
-    // Viewport changes
-    webApp.onEvent('viewportChanged', () => {
-      setState(prev => ({
-        ...prev,
-        capabilities: {
-          ...prev.capabilities,
-          screenInfo: {
-            ...prev.capabilities.screenInfo,
-            width: webApp.viewport.width,
-            height: webApp.viewport.height,
-          },
-        },
-      }));
-    });
-
-    // Theme changes
-    webApp.onEvent('themeChanged', () => {
-      const theme = webApp.colorScheme === 'dark' ? 'dark' : 'light';
-      setState(prev => ({ ...prev, theme }));
-    });
-  };
-
-  // ============================================================================
-  // UTILITY FUNCTIONS
-  // ============================================================================
-
-  const parseTelegramUser = (tgUser?: any): User | null => {
-    if (!tgUser) return null;
-
-    return {
-      id: tgUser.id.toString(),
-      username: tgUser.username || '',
-      displayName: `${tgUser.first_name}${tgUser.last_name ? ' ' + tgUser.last_name : ''}`,
-      avatar: tgUser.photo_url,
-      email: undefined, // Telegram doesn't provide email
-      roles: ['user'],
-      preferences: {
-        language: tgUser.language_code || 'ru',
-        theme: 'auto',
-        notifications: {
-          push: true,
-          email: false,
-          inApp: true,
-          types: ['system', 'reminder', 'message'],
-        },
-        privacy: {
-          shareAnalytics: false,
-          shareCrashReports: false,
-          shareUsageData: false,
-          dataRetention: '90days',
-        },
-        accessibility: {
-          fontSize: 'base',
-          highContrast: false,
-          reduceMotion: false,
-          screenReader: false,
-          keyboardNavigation: true,
-        },
+  const contextValue = useMemo<TelegramContextValue>(
+    () => ({
+      ...state,
+      initialize,
+      showMainButton: (text, onClick) => {
+        state.webApp?.MainButton?.setText(text);
+        state.webApp?.MainButton?.onClick(onClick);
+        state.webApp?.MainButton?.show();
       },
-      session: {
-        token: '', // Will be set by backend
-        refreshToken: '',
-        expiresAt: 0,
-        isActive: true,
-        lastActivity: Date.now(),
+      hideMainButton: () => state.webApp?.MainButton?.hide(),
+      showBackButton: (onClick) => {
+        state.webApp?.BackButton?.onClick(onClick);
+        state.webApp?.BackButton?.show();
       },
-    };
-  };
-
-  const parseTelegramCapabilities = (webApp: TelegramWebApp): PlatformCapabilities => {
-    return {
-      platform: 'telegram',
-      hasNotifications: true,
-      hasGeolocation: false,
-      hasCamera: false,
-      hasBiometrics: webApp.BiometricManager.isBiometricAvailable,
-      hasOfflineSupport: false,
-      hasVoiceInput: false,
-      screenInfo: {
-        width: webApp.viewport.width,
-        height: webApp.viewport.height,
-        density: window.devicePixelRatio || 1,
-        orientation: webApp.viewport.width > webApp.viewport.height ? 'landscape' : 'portrait',
-        isSmall: webApp.viewport.width < 768,
-        isTouch: true,
+      hideBackButton: () => state.webApp?.BackButton?.hide(),
+      showAlert: (message, callback) => state.webApp?.showAlert?.(message, callback),
+      showConfirm: (message, callback) => state.webApp?.showConfirm?.(message, callback),
+      hapticImpact: () => undefined,
+      hapticNotification: () => undefined,
+      expandViewport: () => state.webApp?.expand?.(),
+      closeWebApp: () => state.webApp?.close?.(),
+      sendDataToBot: (data) => state.webApp?.sendData?.(data),
+      setStorageItem: async (key, value) => {
+        localStorage.setItem(`tg:${key}`, value);
       },
-    };
-  };
-
-  // ============================================================================
-  // UI ACTIONS
-  // ============================================================================
-
-  const showMainButton = (text: string, onClick: () => void) => {
-    if (!state.webApp) return;
-
-    state.webApp.MainButton.setText(text);
-    state.webApp.MainButton.onClick(onClick);
-    state.webApp.MainButton.show();
-  };
-
-  const hideMainButton = () => {
-    if (!state.webApp) return;
-    state.webApp.MainButton.hide();
-  };
-
-  const showBackButton = (onClick: () => void) => {
-    if (!state.webApp) return;
-
-    state.webApp.BackButton.onClick(onClick);
-    state.webApp.BackButton.show();
-  };
-
-  const hideBackButton = () => {
-    if (!state.webApp) return;
-    state.webApp.BackButton.hide();
-  };
-
-  const showAlert = (message: string, callback?: () => void) => {
-    if (!state.webApp) return;
-    state.webApp.showAlert(message, callback);
-  };
-
-  const showConfirm = (message: string, callback: (confirmed: boolean) => void) => {
-    if (!state.webApp) return;
-    state.webApp.showConfirm(message, callback);
-  };
-
-  const hapticImpact = (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => {
-    if (!state.webApp) return;
-    state.webApp.HapticFeedback.impactOccurred(style);
-  };
-
-  const hapticNotification = (type: 'error' | 'success' | 'warning') => {
-    if (!state.webApp) return;
-    state.webApp.HapticFeedback.notificationOccurred(type);
-  };
-
-  const expandViewport = () => {
-    if (!state.webApp) return;
-    state.webApp.viewport.expand();
-  };
-
-  const closeWebApp = () => {
-    if (!state.webApp) return;
-    state.webApp.close();
-  };
-
-  const sendDataToBot = (data: string) => {
-    if (!state.webApp) return;
-    state.webApp.sendData(data);
-  };
-
-  // ============================================================================
-  // STORAGE ACTIONS
-  // ============================================================================
-
-  const setStorageItem = (key: string, value: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      if (!state.webApp) {
-        reject(new Error('Telegram WebApp not available'));
-        return;
-      }
-
-      state.webApp.CloudStorage.setItem(key, value, (error) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve();
-        }
-      });
-    });
-  };
-
-  const getStorageItem = (key: string): Promise<string | null> => {
-    return new Promise((resolve, reject) => {
-      if (!state.webApp) {
-        reject(new Error('Telegram WebApp not available'));
-        return;
-      }
-
-      state.webApp.CloudStorage.getItem(key, (error, value) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(value || null);
-        }
-      });
-    });
-  };
-
-  const removeStorageItem = (key: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      if (!state.webApp) {
-        reject(new Error('Telegram WebApp not available'));
-        return;
-      }
-
-      state.webApp.CloudStorage.removeItem(key, (error) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve();
-        }
-      });
-    });
-  };
-
-  // ============================================================================
-  // BIOMETRIC ACTIONS
-  // ============================================================================
-
-  const authenticateBiometric = (reason: string): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
-      if (!state.webApp) {
-        reject(new Error('Telegram WebApp not available'));
-        return;
-      }
-
-      state.webApp.BiometricManager.authenticate(reason, (authenticated, token) => {
-        resolve(authenticated);
-      });
-    });
-  };
-
-  const requestBiometricAccess = (): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
-      if (!state.webApp) {
-        reject(new Error('Telegram WebApp not available'));
-        return;
-      }
-
-      state.webApp.BiometricManager.requestAccess((granted) => {
-        resolve(granted);
-      });
-    });
-  };
-
-  // ============================================================================
-  // CONTEXT VALUE
-  // ============================================================================
-
-  const contextValue: TelegramContextValue = {
-    ...state,
-    initialize,
-    showMainButton,
-    hideMainButton,
-    showBackButton,
-    hideBackButton,
-    showAlert,
-    showConfirm,
-    hapticImpact,
-    hapticNotification,
-    expandViewport,
-    closeWebApp,
-    sendDataToBot,
-    setStorageItem,
-    getStorageItem,
-    removeStorageItem,
-    authenticateBiometric,
-    requestBiometricAccess,
-  };
-
-  return (
-    <TelegramContext.Provider value={contextValue}>
-      {children}
-    </TelegramContext.Provider>
+      getStorageItem: async (key) => localStorage.getItem(`tg:${key}`),
+      removeStorageItem: async (key) => {
+        localStorage.removeItem(`tg:${key}`);
+      },
+      authenticateBiometric: async () => false,
+      requestBiometricAccess: async () => false,
+    }),
+    [state]
   );
-}
 
-// ============================================================================
-// HOOK
-// ============================================================================
+  return <TelegramContext.Provider value={contextValue}>{children}</TelegramContext.Provider>;
+}
 
 export function useTelegram(): TelegramContextValue {
   const context = useContext(TelegramContext);
-  
-  if (context === undefined) {
-    throw new Error('useTelegram must be used within a TelegramProvider');
+  if (!context) {
+    throw new Error('useTelegram must be used inside TelegramProvider');
   }
-  
   return context;
 }
-
-// ============================================================================
-// SPECIALIZED HOOKS
-// ============================================================================
-
-/**
- * Hook for Telegram theme
- */
-export function useTelegramTheme(): Theme {
-  return useTelegram().theme;
-}
-
-/**
- * Hook for Telegram user
- */
-export function useTelegramUser(): User | null {
-  return useTelegram().user;
-}
-
-/**
- * Hook for Telegram capabilities
- */
-export function useTelegramCapabilities(): PlatformCapabilities {
-  return useTelegram().capabilities;
-}
-
-/**
- * Hook for checking if Telegram is ready
- */
-export function useTelegramReady(): boolean {
-  return useTelegram().isReady;
-}
-
-// ============================================================================
-// EXPORTS
-// ============================================================================
-
-export { TelegramContext };
-export type { TelegramWebApp, PopupParams, PopupButton };

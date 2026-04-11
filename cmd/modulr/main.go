@@ -4,95 +4,61 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 	"time"
 
-	"modulr/ai"
-	"modulr/auth"
-	"modulr/events"
-	"modulr/files"
-	"modulr/metrics"
-	"modulr/notifications"
-	"modulr/scheduler"
+	"modulr/app"
 )
 
 func main() {
 	ctx := context.Background()
-	bus := events.NewBus(128)
-
-	idemSched := events.NewMemoryIdempotency()
-	idemFiles := events.NewMemoryIdempotency()
-	idemMetrics := events.NewMemoryIdempotency()
-
-	authAPI := auth.NewService(auth.LoadConfig(), auth.NewMemorySessionStore(), bus)
-	schedAPI := scheduler.NewService(scheduler.LoadConfig(), bus, idemSched)
-	filesAPI := files.NewService(files.LoadConfig(), bus, idemFiles)
-	notifyAPI := notifications.NewService(notifications.LoadConfig(), bus, notifications.LogSink{})
-	metricsCfg := metrics.LoadConfig()
-	metricsAPI := metrics.NewService(metricsCfg, bus, idemMetrics)
-	aiAPI := ai.NewService(ai.LoadConfig(), bus, ai.StubGateway{})
-
-	// Порядок: auth → scheduler → files → notifications → metrics → ai
-	for _, m := range []interface{ Start(context.Context) error }{
-		authAPI, schedAPI, filesAPI, notifyAPI, metricsAPI, aiAPI,
-	} {
-		if err := m.Start(ctx); err != nil {
-			log.Fatalf("start module: %v", err)
+	rt := app.NewRuntime()
+	if err := rt.Start(ctx); err != nil {
+		log.Fatalf("runtime start: %v", err)
+	}
+	defer func() {
+		if err := rt.Stop(context.Background()); err != nil {
+			log.Printf("runtime stop: %v", err)
 		}
-	}
+	}()
 
-	traceCtx := events.WithTraceID(ctx, "demo-trace-1")
-	token, err := authAPI.CreateSession(traceCtx, "user_demo", []auth.Role{auth.RoleUser})
+	traceID, err := rt.HandleMessage(ctx, app.InboundMessage{
+		ChatID:   42,
+		UserID:   1001,
+		Username: "demo",
+		Text:     getEnv("MODULR_DEMO_TEXT", "напоминание купить молоко после работы"),
+		Scope:    getEnv("MODULR_DEMO_SCOPE", "personal"),
+		Source:   "telegram",
+	})
 	if err != nil {
-		log.Fatalf("session: %v", err)
+		log.Fatalf("handle message: %v", err)
 	}
-	sess, err := authAPI.ValidateToken(ctx, token)
-	if err != nil {
-		log.Fatalf("validate: %v", err)
-	}
-	log.Printf("auth: session ok user=%s", sess.UserID)
-
-	bus.Publish(events.Event{
-		Name:    events.V1SystemStartup,
-		Payload: map[string]any{"component": "modulr"},
-		Source:  "cmd/modulr",
-		TraceID: events.TraceIDFromContext(traceCtx),
-	})
-
-	start := time.Now().Add(2 * time.Hour)
-	bus.Publish(events.Event{
-		ID:      "cal-1",
-		Name:    events.V1CalendarCreated,
-		Payload: scheduler.CalendarHint{ID: "cal-1", Title: "Синк", Start: start},
-		Source:  "demo",
-		TraceID: events.TraceIDFromContext(traceCtx),
-		Context: map[string]any{"chat_id": int64(42), "user_id": sess.UserID},
-	})
-
-	bus.Publish(events.Event{
-		ID:      "doc-1",
-		Name:    events.V1TransportFileRecv,
-		Payload: files.TransportFilePayload{FileName: "note.txt", MIME: "text/plain", Data: []byte("hello modulr"), ChatID: 42, UserID: sess.UserID},
-		Source:  "demo",
-		TraceID: events.TraceIDFromContext(traceCtx),
-	})
-
-	bus.Publish(events.Event{
-		Name:    events.V1TodoDue,
-		Payload: map[string]any{"todo_id": "t1"},
-		Source:  "demo",
-		TraceID: events.TraceIDFromContext(traceCtx),
-		Context: map[string]any{"user_id": sess.UserID},
-	})
 
 	time.Sleep(400 * time.Millisecond)
+	stats, err := rt.Orchestrator().GetStats(ctx)
+	if err != nil {
+		log.Fatalf("runtime stats: %v", err)
+	}
+	metricsSnapshot := rt.Metrics().Snapshot(5)
+	keys, err := rt.Store().ListPrefix(ctx, "tracker:check:")
+	if err != nil {
+		log.Fatalf("storage list: %v", err)
+	}
 
-	log.Printf("metrics: %+v", metricsAPI.Counts())
-	log.Printf("dead-letter count: %d", bus.DeadLetterCount())
+	log.Printf(
+		"runtime trace=%s checklist_items=%d errors=%d events=%v scope_counts=%v traces=%v",
+		traceID,
+		len(keys),
+		stats.ErrorCount,
+		stats.EventCounts,
+		metricsSnapshot.ScopeCounts,
+		metricsSnapshot.Traces,
+	)
+}
 
-	_ = aiAPI.Stop()
-	_ = metricsAPI.Stop()
-	_ = notifyAPI.Stop()
-	_ = filesAPI.Stop()
-	_ = schedAPI.Stop()
-	_ = authAPI.Stop()
+func getEnv(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
 }

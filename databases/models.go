@@ -29,6 +29,20 @@ type Session struct {
 	UpdatedAt time.Time              `json:"updated_at"`
 }
 
+// EventJournalEntry хранит trace-связанный журнал transport/runtime событий.
+type EventJournalEntry struct {
+	ID        int64                  `json:"id"`
+	TraceID   string                 `json:"trace_id"`
+	ChatID    int64                  `json:"chat_id"`
+	Scope     string                 `json:"scope"`
+	EventName string                 `json:"event_name"`
+	Status    string                 `json:"status"`
+	Source    string                 `json:"source"`
+	Payload   map[string]interface{} `json:"payload,omitempty"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	CreatedAt time.Time              `json:"created_at"`
+}
+
 // StatsSummary агрегированная статистика
 type StatsSummary struct {
 	TotalUsers   int64 `json:"total_users"`

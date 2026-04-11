@@ -30,9 +30,13 @@ func InitDB(ctx context.Context, cfg Config) (*DB, error) {
 
 	db := &DB{pool: pool, cfg: cfg}
 
-	if err := db.runMigrations(ctx); err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("migrations failed: %w", err)
+	if cfg.AutoMigrate {
+		if err := db.runMigrations(ctx); err != nil {
+			pool.Close()
+			return nil, fmt.Errorf("migrations failed: %w", err)
+		}
+	} else {
+		log.Println("🗄️  Auto migrations disabled (DB_AUTO_MIGRATE=false)")
 	}
 
 	return db, nil

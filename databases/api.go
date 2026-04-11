@@ -2,7 +2,9 @@ package databases
 
 import (
 	"context"
+
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // DatabaseAPI — публичный интерфейс для взаимодействия микросервисов с БД
@@ -19,13 +21,18 @@ type DatabaseAPI interface {
 	SetSession(ctx context.Context, chatID int64, state string, payload map[string]interface{}) error
 	ClearSession(ctx context.Context, chatID int64) error
 
+	// Журнал transport/runtime событий
+	AppendJournalEvent(ctx context.Context, entry EventJournalEntry) (*EventJournalEntry, error)
+	ListJournalEventsByTrace(ctx context.Context, traceID string, limit int) ([]EventJournalEntry, error)
+	ListJournalEventsByChat(ctx context.Context, chatID int64, limit int) ([]EventJournalEntry, error)
+
 	// Статистика
 	LogAction(ctx context.Context, userID int64, action string, metadata map[string]interface{}) error
 	GetStats(ctx context.Context) (*StatsSummary, error)
 
 	// Универсальные методы (для сложных кастомных запросов других сервисов)
 	Query(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error)
-	Exec(ctx context.Context, query string, args ...interface{}) (pgx.CommandTag, error)
+	Exec(ctx context.Context, query string, args ...interface{}) (pgconn.CommandTag, error)
 
 	// Жизненный цикл
 	Start(ctx context.Context) error

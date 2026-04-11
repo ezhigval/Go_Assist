@@ -23,10 +23,10 @@ type Request struct {
 type Response struct {
 	Text      string
 	ParseMode string
-	Keyboard  tgbotapi.ReplyMarkup // может быть Reply или Inline
-	Edit      bool                 // редактировать последнее сообщение
-	Delete    bool                 // удалить сообщение
-	NextState state.Session        // обновить состояние
+	Keyboard  any           // может быть ReplyKeyboardMarkup или InlineKeyboardMarkup
+	Edit      bool          // редактировать последнее сообщение
+	Delete    bool          // удалить сообщение
+	NextState state.Session // обновить состояние
 }
 
 // HandlerFunc — сигнатура бизнес-обработчика

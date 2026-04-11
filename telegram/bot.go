@@ -88,9 +88,12 @@ func (b *Bot) startWebhook(ctx context.Context) error {
 	}
 	log.Println("🚀 Starting in Webhook mode...")
 
-	wh := tgbotapi.NewWebhook(b.cfg.WebhookURL)
+	wh, err := tgbotapi.NewWebhook(b.cfg.WebhookURL)
+	if err != nil {
+		return fmt.Errorf("new webhook: %w", err)
+	}
 	wh.AllowedUpdates = b.cfg.AllowedUpdates
-	if _, err := b.api.SetWebhook(wh); err != nil {
+	if _, err := b.api.Request(wh); err != nil {
 		return fmt.Errorf("set webhook: %w", err)
 	}
 
@@ -112,7 +115,7 @@ func (b *Bot) startWebhook(ctx context.Context) error {
 	<-ctx.Done()
 	log.Println("🛑 Webhook shutdown initiated")
 	b.server.Shutdown(context.Background())
-	b.api.RemoveWebhook()
+	_, _ = b.api.Request(tgbotapi.DeleteWebhookConfig{})
 	return nil
 }
 
@@ -127,10 +130,29 @@ func (b *Bot) webhookHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (b *Bot) processUpdate(ctx context.Context, update tgbotapi.Update) {
-	err := b.router.Handle(ctx, update)
+	resp, err := b.router.Handle(ctx, update)
+	chatID, msgID := chatAndMessageID(update)
 	if err != nil {
 		log.Printf("❌ Handler error: %v", err)
-		// STUB: Error UX requires SendMessage with message.FormatError(err) and chatID from update, respecting ctx cancellation.
+		if chatID != 0 {
+			_ = b.SendMessage(ctx, chatID, &handler.Response{
+				Text:      message.FormatError(err),
+				ParseMode: "Markdown",
+			})
+		}
+		return
+	}
+	if resp == nil || chatID == 0 {
+		return
+	}
+	if resp.Edit && msgID != 0 {
+		if err := b.EditMessage(ctx, chatID, msgID, resp); err != nil {
+			log.Printf("❌ EditMessage error: %v", err)
+		}
+		return
+	}
+	if err := b.SendMessage(ctx, chatID, resp); err != nil {
+		log.Printf("❌ SendMessage error: %v", err)
 		return
 	}
 }
@@ -200,4 +222,14 @@ func RecoverMiddleware(next handler.HandlerFunc) handler.HandlerFunc {
 		}()
 		return next(ctx, req)
 	}
+}
+
+func chatAndMessageID(update tgbotapi.Update) (int64, int) {
+	if update.CallbackQuery != nil && update.CallbackQuery.Message != nil {
+		return update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID
+	}
+	if update.Message != nil {
+		return update.Message.Chat.ID, update.Message.MessageID
+	}
+	return 0, 0
 }

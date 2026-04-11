@@ -2,12 +2,10 @@ package handler
 
 import (
 	"context"
-	"log"
 	"strings"
 	"sync"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"telegram/message"
 	"telegram/state"
 )
 
@@ -74,10 +72,10 @@ func (r *Router) RegisterState(stateKey string, h HandlerFunc) {
 	r.states[stateKey] = h
 }
 
-// Handle обрабатывает входящее обновление
-func (r *Router) Handle(ctx context.Context, update tgbotapi.Update) error {
+// Handle обрабатывает входящее обновление и возвращает Response для отправки transport-слоем.
+func (r *Router) Handle(ctx context.Context, update tgbotapi.Update) (*Response, error) {
 	if update.Message == nil && update.CallbackQuery == nil {
-		return nil
+		return nil, nil
 	}
 
 	req := &Request{}
@@ -110,7 +108,7 @@ func (r *Router) Handle(ctx context.Context, update tgbotapi.Update) error {
 	}
 
 	if fn == nil {
-		return nil // Нет обработчика → игнорируем
+		return nil, nil // Нет обработчика → игнорируем
 	}
 
 	// Применяем middleware
@@ -120,21 +118,24 @@ func (r *Router) Handle(ctx context.Context, update tgbotapi.Update) error {
 
 	resp, err := fn(ctx, req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if resp == nil {
-		return nil
+		return nil, nil
 	}
 
 	// Сохраняем новое состояние
 	if resp.NextState.Key != "" {
-		r.store.Set(ctx, req.ChatID, resp.NextState)
+		if err := r.store.Set(ctx, req.ChatID, resp.NextState); err != nil {
+			return nil, err
+		}
 	} else {
-		r.store.Clear(ctx, req.ChatID)
+		if err := r.store.Clear(ctx, req.ChatID); err != nil {
+			return nil, err
+		}
 	}
 
-	// Возвращаем Response для дальнейшей отправки (обрабатывается в bot.go)
-	return nil
+	return resp, nil
 }
 
 func (r *Router) findCallbackHandler(data string) HandlerFunc {

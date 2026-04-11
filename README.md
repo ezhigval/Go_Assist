@@ -44,7 +44,9 @@ Data Layer (PostgreSQL | Redis | Vector DB | Local Storage)
 **Документация:**
 - [Проектные правила](./PROJECT_RULES.md)
 - [Экосистема и модули](./ARCHITECTURE.md#-экосистема-модули)
+- [Матрица событий v1](./EVENT_MATRIX.md)
 - [AI-архитектура](./ai/AI_ARCHITECTURE.md)
+- [Metrics / Observability](./metrics/README.md)
 - [Frontend-стандарты](./frontend/FRONTEND_RULES.md)
 
 ---
@@ -138,7 +140,9 @@ cp config/config.example.yaml config/config.yaml
 # Заполни переменные (минимум для локального запуска):
 # TELEGRAM_TOKEN=your_bot_token
 # DB_DSN=postgres://user:pass@localhost:5432/modulr?sslmode=disable
-# AI_PROVIDER=openai  # или "local" для самохостинга
+# AI_PROVIDER=local   # или оставь unset/"stub" для детерминированного fallback
+# AI_PROVIDER_BASE_URL=http://127.0.0.1:8000
+# AI_ALLOW_STUB_FALLBACK=true
 ```
 
 ### 3. Запуск ядра (Go)
@@ -146,7 +150,17 @@ cp config/config.example.yaml config/config.yaml
 cd core
 go mod tidy
 go run main.go
-# Ядро запустится в режиме polling, слушает EventBus
+# Runtime поднимет orchestrator + bus bridge + доменные модули
+# и прогонит demo-сообщение через общий message flow
+# В логе также появятся scope_counts и короткий trace-summary из metrics/
+```
+
+Опционально:
+
+```bash
+MODULR_DEMO_TEXT="напоминание купить молоко после работы" \
+MODULR_DEMO_SCOPE=personal \
+go run main.go
 ```
 
 ### 4. Запуск frontend (Telegram Mini App)
@@ -157,16 +171,39 @@ npm run dev:telegram
 # Открой бота в Telegram -> нажми "Запустить веб-приложение"
 ```
 
-### 5. Локальный AI-стек (опционально)
+### 5. Запуск Telegram transport
+```bash
+cd databases
+DB_AUTO_MIGRATE=false go run ./cmd/databases up
+go run ./cmd/databases status
+
+cd ../telegram
+go mod tidy
+go run ./cmd/telegram
+# Требуется TELEGRAM_TOKEN
+# /start и обычные текстовые сообщения уходят в runtime ingress корневого модуля
+# Опционально для PostgreSQL-backed transport persistence:
+# TELEGRAM_STATE_STORE=postgres DB_HOST=localhost DB_PORT=5432 DB_NAME=telegram_bot DB_USER=postgres DB_PASS=...
+# На staging/production держи DB_AUTO_MIGRATE=false и запускай migrations отдельным deployment step.
+# В этом режиме sessions и trace-связанный event_journal пишутся в databases/
+```
+
+### 6. Локальный AI-стек (опционально)
 ```bash
 cd ai
 docker compose -f docker-compose.local.yml up -d
 # Запустит Ollama + FastAPI-сервисы для локального инференса
+
+# Затем для core/aiengine:
+cd ..
+AI_PROVIDER=local AI_PROVIDER_BASE_URL=http://127.0.0.1:8000 go run ./core
+# Если local provider недоступен, при AI_ALLOW_STUB_FALLBACK=true runtime откатится на stub decisions.
 ```
 
 **Полная документация:**
 - [Установка и настройка](#70-быстрый-старт)
 - [Конфигурация](#70-быстрый-старт)
+- [Release Template](./RELEASE_TEMPLATE.md)
 - [API Reference](./README.md)
 
 ---
@@ -236,6 +273,8 @@ docker compose -f docker-compose.local.yml up -d
 
 **Детальный план:**
 - [Основной Roadmap](./ROADMAP.md)
+- [Матрица событий v1](./EVENT_MATRIX.md)
+- [Release Template](./RELEASE_TEMPLATE.md)
 - [AI Roadmap](./ai/AI_ROADMAP.md)
 - [Frontend Roadmap](./frontend/FRONTEND_ROADMAP.md)
 

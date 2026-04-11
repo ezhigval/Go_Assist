@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package modulr.ai.v1;
+
+option go_package = "modulr/ai/contracts;contracts";
+
+message AnalyzeRequest {
+  string trace_id = 1;
+  int64 chat_id = 2;
+  string scope = 3;
+  string text = 4;
+  repeated string tags = 5;
+  string kind_hint = 6;
+}
+
+message Decision {
+  string id = 1;
+  string target = 2;
+  string action = 3;
+  map<string, string> parameters = 4;
+  double confidence = 5;
+  string scope = 6;
+}
+
+message AnalyzeResponse {
+  repeated Decision decisions = 1;
+}
+
+service AIService {
+  rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse);
+}

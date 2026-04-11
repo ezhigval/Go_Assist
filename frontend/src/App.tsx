@@ -158,7 +158,7 @@ function App() {
             {/* Quick actions */}
             <div className="flex justify-center space-x-4">
               <button
-                onClick={() => eventBus.emit('test-event', { message: 'Hello from Modulr!' })}
+                onClick={() => eventBus.emit('v1.system.startup', { message: 'Hello from Modulr!' })}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
                 Test Event Bus

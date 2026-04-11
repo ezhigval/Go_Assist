@@ -228,7 +228,7 @@ func (o *Orchestrator) ProcessEvent(ctx context.Context, e coreevents.Event) err
 	}
 
 	decs = o.pipe.Prioritize(decs)
-	filtered := o.pipe.DispatchFilter(decs)
+	filtered := o.pipe.DispatchFilter(ev.Scope, ev.Tags, ev.Context, decs)
 	if len(filtered) == 0 {
 		o.handleFallback(ctx, ev, fmt.Errorf("orchestrator: no decisions passed filters"))
 		return nil

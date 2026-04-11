@@ -1,20 +1,15 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "skipLibCheck": true,
-
-    /* Bundler mode */
     "moduleResolution": "bundler",
+    "jsx": "react-jsx",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx",
-
-    /* Linting */
+    "skipLibCheck": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -24,71 +19,28 @@
     "noPropertyAccessFromIndexSignature": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-
-    /* Path mapping */
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
       "@modulr/core-types": ["src/types/core.ts"],
       "@modulr/ui": ["src/components/ui"],
+      "@modulr/ui/*": ["src/components/ui/*"],
       "@modulr/hooks": ["src/hooks"],
+      "@modulr/hooks/*": ["src/hooks/*"],
       "@modulr/lib": ["src/lib"],
+      "@modulr/lib/*": ["src/lib/*"],
       "@modulr/context": ["src/context"],
+      "@modulr/context/*": ["src/context/*"],
       "@modulr/platforms": ["src/platforms"],
+      "@modulr/platforms/*": ["src/platforms/*"],
       "@modulr/modules": ["src/modules"],
-      "@modulr/assets": ["src/assets"]
+      "@modulr/modules/*": ["src/modules/*"]
     },
-
-    /* Additional options */
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "removeComments": false,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-
-    /* React Native support */
-    "allowJs": true,
-    "checkJs": false,
-
-    /* Type checking */
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
-    "noImplicitAny": true,
-    "noImplicitThis": true,
-    "alwaysStrict": true,
-
-    /* Module resolution */
-    "types": ["vite/client", "node"],
-    "typeRoots": ["./node_modules/@types", "./src/types"]
+    "types": ["node", "vite/client"]
   },
-  "include": [
-    "src",
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "src/**/*.d.ts",
-    "vite.config.ts",
-    "vitest.config.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "build",
-    "coverage",
-    "storybook-static",
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "**/*.spec.ts",
-    "**/*.spec.tsx"
-  ],
-  "references": [
-    {
-      "path": "./tsconfig.node.json"
-    }
-  ]
+  "include": ["src", "src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "dist", "build", "coverage", "storybook-static"]
 }

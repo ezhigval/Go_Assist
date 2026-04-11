@@ -27,8 +27,6 @@ func (r *ModelRouter) seedDefaults() {
 		{ID: "finance_analyzer", Kind: "finance_analyzer", Priority: 15, Weight: 1.0, Capabilities: []string{"finance", "invoice", "budget"}, Enabled: true},
 		{ID: "schedule_optimizer", Kind: "schedule_optimizer", Priority: 15, Weight: 1.0, Capabilities: []string{"calendar", "time", "reminder"}, Enabled: true},
 	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	for _, m := range defaults {
 		r.models[m.ID] = m
 	}
