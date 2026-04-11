@@ -30,6 +30,7 @@
 - [2026-04-11] | `RELEASE_TEMPLATE.md`, `README.md`, `ROADMAP.md` | Для v1.0 добавлен release notes / rollback template: preflight checks, миграционный шаг, переключение `AI_PROVIDER`/`AI_ALLOW_STUB_FALLBACK`, откат через предыдущую версию образа и down-step/snapshot для БД | §3 E1, §5 V1, §7
 - [2026-04-11] | `events/scope_policy.go`, `core/orchestrator/pipeline.go`, `core/orchestrator/pipeline_test.go`, `app/runtime.go`, `app/runtime_test.go`, `metrics/service.go`, `metrics/models.go`, `metrics/service_test.go`, `ARCHITECTURE.md`, `ROADMAP.md` | Начат v1.5: orchestrator теперь блокирует cross-scope dispatch по умолчанию и пропускает его только при явной policy (`allowed_scopes` / `allow_scope:<segment>`), а runtime metrics собирают агрегаты по `scope` и краткие trace-summary по `trace_id` | §1 I4, §5 V2, §7
 - [2026-04-11] | `metrics/api.go`, `metrics/README.md`, `core/main.go`, `cmd/modulr/main.go`, `README.md`, `ROADMAP.md` | Для v1.5 оформлен экспорт observability: публичный контракт `metrics.Snapshot`, quick-start логирует `scope_counts` и trace-summary, а документация зафиксировала различие между in-memory metrics и полным `event_journal` | §5 V1, §7
+- [2026-04-11] | `frontend/package.json`, `frontend/package-lock.json` | Исправлен CI-конфликт peer dependencies: `react`/`react-dom` зафиксированы на `18.2.0`, а `@twa-dev/sdk` pinned до `7.0.0`, совместимых с `react-native@0.74.x`, чтобы `npm ci` в `frontend-check` не падал на `ERESOLVE` | §4 C1, §7
 
 ---
 
