@@ -26,6 +26,7 @@
 
 - `000002_event_journal_scope_indexes` — индексы под scope-aware replay журнала;
 - `000003_sessions_active_scope` — явный `active_scope` в `sessions` с backfill из legacy payload `_active_scope`.
+- `000004_event_journal_rls` — PostgreSQL RLS policy для `event_journal` с runtime context через `SET LOCAL modulr.allowed_scopes` / `modulr.scope_bypass`.
 
 Основные команды:
 
@@ -84,6 +85,13 @@ Read-side policy:
 - для чтения replay/диагностики следует использовать scope-aware path `(*DB).ListJournalEventsByTraceScoped` / `(*DB).ListJournalEventsByChatScoped`;
 - `NewJournalScopeFilter(baseScope, tags, metadata)` повторяет runtime policy (`allowed_scopes`, `allow_scope:<segment>`) и не даёт случайно читать cross-scope записи;
 - `FullJournalScopeFilter()` оставлен только для admin/deploy tooling и совместимости со старым `DatabaseAPI`.
+
+DB-enforced policy:
+
+- `000004_event_journal_rls` включает PostgreSQL Row Level Security для `event_journal`;
+- repository-слой теперь оборачивает append/read journal paths в транзакцию и выставляет `SET LOCAL modulr.allowed_scopes=<csv>` или `SET LOCAL modulr.scope_bypass=on`;
+- Go-side `WHERE scope = ANY(...)` сохранён как дополнительная защита и для обратной совместимости при rollback миграции;
+- для реального прод-эффекта приложение должно подключаться **не** под PostgreSQL superuser: суперпользователь обходит RLS даже при `FORCE ROW LEVEL SECURITY`.
 
 Минимальный запрос для replay одного trace:
 

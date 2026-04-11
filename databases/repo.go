@@ -120,27 +120,34 @@ func (db *DB) AppendJournalEvent(ctx context.Context, entry EventJournalEntry) (
 	stored := EventJournalEntry{}
 	var storedPayload []byte
 	var storedMetadata []byte
-	err = db.pool.QueryRow(ctx, query,
-		entry.TraceID,
-		entry.ChatID,
-		entry.Scope,
-		entry.EventName,
-		entry.Status,
-		entry.Source,
-		payloadBytes,
-		metadataBytes,
-	).Scan(
-		&stored.ID,
-		&stored.TraceID,
-		&stored.ChatID,
-		&stored.Scope,
-		&stored.EventName,
-		&stored.Status,
-		&stored.Source,
-		&storedPayload,
-		&storedMetadata,
-		&stored.CreatedAt,
-	)
+	access, err := singleScopeAccess(entry.Scope)
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.withScopeAccess(ctx, access, func(tx pgx.Tx) error {
+		return tx.QueryRow(ctx, query,
+			entry.TraceID,
+			entry.ChatID,
+			entry.Scope,
+			entry.EventName,
+			entry.Status,
+			entry.Source,
+			payloadBytes,
+			metadataBytes,
+		).Scan(
+			&stored.ID,
+			&stored.TraceID,
+			&stored.ChatID,
+			&stored.Scope,
+			&stored.EventName,
+			&stored.Status,
+			&stored.Source,
+			&storedPayload,
+			&storedMetadata,
+			&stored.CreatedAt,
+		)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -165,41 +172,51 @@ func (db *DB) ListJournalEventsByTraceScoped(ctx context.Context, traceID string
 	if traceID == "" {
 		return nil, fmt.Errorf("list journal by trace: trace_id is required")
 	}
-	if err := filter.validate(); err != nil {
+	access, err := journalScopeAccess(filter)
+	if err != nil {
 		return nil, err
 	}
 	limit = normalizeJournalLimit(limit)
 
+	var entries []EventJournalEntry
 	if filter.Unrestricted() {
-		rows, err := db.pool.Query(ctx, `
+		err := db.withScopeAccess(ctx, access, func(tx pgx.Tx) error {
+			rows, err := tx.Query(ctx, `
+				SELECT id, trace_id, chat_id, scope, event_name, status, source, payload, metadata, created_at
+				FROM event_journal
+				WHERE trace_id = $1
+				ORDER BY created_at ASC, id ASC
+				LIMIT $2
+			`, traceID, limit)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+
+			entries, err = scanJournalRows(rows)
+			return err
+		})
+		return entries, err
+	}
+
+	err = db.withScopeAccess(ctx, access, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `
 			SELECT id, trace_id, chat_id, scope, event_name, status, source, payload, metadata, created_at
 			FROM event_journal
 			WHERE trace_id = $1
+			  AND scope = ANY($2)
 			ORDER BY created_at ASC, id ASC
-			LIMIT $2
-		`, traceID, limit)
+			LIMIT $3
+		`, traceID, filter.Scopes(), limit)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		defer rows.Close()
 
-		return scanJournalRows(rows)
-	}
-
-	rows, err := db.pool.Query(ctx, `
-		SELECT id, trace_id, chat_id, scope, event_name, status, source, payload, metadata, created_at
-		FROM event_journal
-		WHERE trace_id = $1
-		  AND scope = ANY($2)
-		ORDER BY created_at ASC, id ASC
-		LIMIT $3
-	`, traceID, filter.Scopes(), limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return scanJournalRows(rows)
+		entries, err = scanJournalRows(rows)
+		return err
+	})
+	return entries, err
 }
 
 func (db *DB) ListJournalEventsByChat(ctx context.Context, chatID int64, limit int) ([]EventJournalEntry, error) {
@@ -208,41 +225,51 @@ func (db *DB) ListJournalEventsByChat(ctx context.Context, chatID int64, limit i
 
 // ListJournalEventsByChatScoped возвращает журнал чата только в пределах разрешённых scope.
 func (db *DB) ListJournalEventsByChatScoped(ctx context.Context, chatID int64, filter JournalScopeFilter, limit int) ([]EventJournalEntry, error) {
-	if err := filter.validate(); err != nil {
+	access, err := journalScopeAccess(filter)
+	if err != nil {
 		return nil, err
 	}
 	limit = normalizeJournalLimit(limit)
 
+	var entries []EventJournalEntry
 	if filter.Unrestricted() {
-		rows, err := db.pool.Query(ctx, `
+		err := db.withScopeAccess(ctx, access, func(tx pgx.Tx) error {
+			rows, err := tx.Query(ctx, `
+				SELECT id, trace_id, chat_id, scope, event_name, status, source, payload, metadata, created_at
+				FROM event_journal
+				WHERE chat_id = $1
+				ORDER BY created_at DESC, id DESC
+				LIMIT $2
+			`, chatID, limit)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+
+			entries, err = scanJournalRows(rows)
+			return err
+		})
+		return entries, err
+	}
+
+	err = db.withScopeAccess(ctx, access, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `
 			SELECT id, trace_id, chat_id, scope, event_name, status, source, payload, metadata, created_at
 			FROM event_journal
 			WHERE chat_id = $1
+			  AND scope = ANY($2)
 			ORDER BY created_at DESC, id DESC
-			LIMIT $2
-		`, chatID, limit)
+			LIMIT $3
+		`, chatID, filter.Scopes(), limit)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		defer rows.Close()
 
-		return scanJournalRows(rows)
-	}
-
-	rows, err := db.pool.Query(ctx, `
-		SELECT id, trace_id, chat_id, scope, event_name, status, source, payload, metadata, created_at
-		FROM event_journal
-		WHERE chat_id = $1
-		  AND scope = ANY($2)
-		ORDER BY created_at DESC, id DESC
-		LIMIT $3
-	`, chatID, filter.Scopes(), limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return scanJournalRows(rows)
+		entries, err = scanJournalRows(rows)
+		return err
+	})
+	return entries, err
 }
 
 // --- Статистика ---
