@@ -49,13 +49,16 @@ func (s *Service) CreateSession(ctx context.Context, userID string, roles []Role
 		return "", err
 	}
 	now := time.Now()
+	scope, allowedScopes := sessionAccessFromContext(ctx)
 	sess := &Session{
-		Token:     token,
-		UserID:    userID,
-		Roles:     roles,
-		CreatedAt: now,
-		ExpiresAt: now.Add(s.cfg.SessionTTL),
-		Meta:      make(map[string]any),
+		Token:         token,
+		UserID:        userID,
+		Scope:         scope,
+		AllowedScopes: allowedScopes,
+		Roles:         roles,
+		CreatedAt:     now,
+		ExpiresAt:     now.Add(s.cfg.SessionTTL),
+		Meta:          make(map[string]any),
 	}
 	if err := s.store.Put(ctx, token, sess); err != nil {
 		return "", err
@@ -121,12 +124,24 @@ func (s *Service) CanEmit(sess *Session, eventName string) bool {
 	return false
 }
 
+// CanAccessScope true, если auth-сессия разрешает target scope.
+func (s *Service) CanAccessScope(sess *Session, targetScope string) bool {
+	return ScopeAllowed(sess, targetScope)
+}
+
+// AuthorizeEvent объединяет проверку роли и разрешённого scope.
+func (s *Service) AuthorizeEvent(sess *Session, eventName, targetScope string) bool {
+	return s.CanEmit(sess, eventName) && s.CanAccessScope(sess, targetScope)
+}
+
 // EnrichContext прокидывает user_id и роли в контекст шины.
 func (s *Service) EnrichContext(sess *Session, ctx map[string]any) {
 	if sess == nil || ctx == nil {
 		return
 	}
 	ctx["user_id"] = sess.UserID
+	ctx["scope"] = normalizeSessionScope(sess.Scope)
+	ctx["allowed_scopes"] = sessionAllowedScopes(sess.Scope, sess.AllowedScopes)
 	roles := make([]string, 0, len(sess.Roles))
 	for _, r := range sess.Roles {
 		roles = append(roles, string(r))

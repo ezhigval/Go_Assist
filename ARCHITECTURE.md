@@ -93,8 +93,8 @@
 ## 🗄️ Данные
 
 - **`events.Storage`** + **`MemoryStorage`** — универсальная JSON-персистентность для модулей без привязки к СУБД.  
-- **`databases/`** — PostgreSQL для прод-сценариев с Telegram/сессиями, trace-связанным `event_journal` и scope-aware `stats`; read-path идёт через явный scope filter, а `event_journal`/`stats` дополнительно прикрыты PostgreSQL RLS policy с `SET LOCAL modulr.allowed_scopes` / `modulr.scope_bypass`.  
-- Политики **RLS / tenant / scope** — начаты на `event_journal` и `stats`; расширение на app-role rollout и остальные scope-bound таблицы остаётся следующим шагом.
+- **`databases/`** — PostgreSQL для прод-сценариев с Telegram/сессиями, trace-связанным `event_journal`, scope-aware `stats` и DB-backed `auth_sessions`; repository-слой выставляет единый storage access context (`modulr.allowed_scopes`, `modulr.chat_id`, `modulr.auth_token_hash`, `modulr.scope_bypass`).  
+- Политики **RLS / tenant / scope** уже покрывают `event_journal`, `stats`, `sessions` и `auth_sessions`; следующим шагом остаётся rollout non-superuser app-role по окружениям и подключение DB-backed auth store в реальные transport/API entrypoints.
 
 ---
 

@@ -54,13 +54,15 @@ func (db *DB) Start(ctx context.Context) error {
 		return nil
 	}
 	log.Printf(
-		"🛡️ storage RLS effective=%t user=%s superuser=%t bypassrls=%t journal_enabled=%t stats_enabled=%t",
+		"🛡️ storage RLS effective=%t user=%s superuser=%t bypassrls=%t journal_enabled=%t stats_enabled=%t sessions_enabled=%t auth_sessions_enabled=%t",
 		status.Effective(),
 		status.CurrentUser,
 		status.RoleSuperuser,
 		status.RoleBypassRLS,
 		status.Journal.TableRLSEnabled,
 		status.Stats.TableRLSEnabled,
+		status.Sessions.TableRLSEnabled,
+		status.AuthSessions.TableRLSEnabled,
 	)
 	for _, warning := range status.Warnings() {
 		log.Printf("⚠️ storage RLS: %s", warning)

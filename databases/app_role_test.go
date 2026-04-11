@@ -16,6 +16,7 @@ func TestBuildAppRoleBootstrapSQL(t *testing.T) {
 	wantSnippets := []string{
 		"CREATE ROLE modulr_app LOGIN NOSUPERUSER",
 		"GRANT CONNECT ON DATABASE telegram_bot TO modulr_app;",
+		"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE auth_sessions TO modulr_app;",
 		"GRANT SELECT, INSERT ON TABLE event_journal TO modulr_app;",
 		"go run ./cmd/databases rls-status",
 	}

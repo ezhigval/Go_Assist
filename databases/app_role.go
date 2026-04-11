@@ -9,7 +9,7 @@ import (
 var pgIdentifierPattern = regexp.MustCompile(`^[a-z_][a-z0-9_]*$`)
 
 // BuildAppRoleBootstrapSQL печатает минимальный bootstrap для non-superuser app role,
-// под которой journal RLS действительно будет enforceиться.
+// под которой storage authorization действительно будет enforceиться.
 func BuildAppRoleBootstrapSQL(role, databaseName, schema string) (string, error) {
 	role = normalizePGIdentifier(role)
 	databaseName = normalizePGIdentifier(databaseName)
@@ -26,7 +26,7 @@ func BuildAppRoleBootstrapSQL(role, databaseName, schema string) (string, error)
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "-- Bootstrap non-superuser app role for Modulr journal RLS\n")
+	fmt.Fprintf(&b, "-- Bootstrap non-superuser app role for Modulr storage authorization\n")
 	fmt.Fprintf(&b, "-- Run as database owner or administrative role, then configure DB_USER=%s\n\n", role)
 	fmt.Fprintf(&b, "DO $$\nBEGIN\n")
 	fmt.Fprintf(&b, "    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '%s') THEN\n", role)
@@ -36,6 +36,7 @@ func BuildAppRoleBootstrapSQL(role, databaseName, schema string) (string, error)
 	fmt.Fprintf(&b, "GRANT CONNECT ON DATABASE %s TO %s;\n", databaseName, role)
 	fmt.Fprintf(&b, "GRANT USAGE ON SCHEMA %s TO %s;\n", schema, role)
 	fmt.Fprintf(&b, "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE users, chats, sessions, stats TO %s;\n", role)
+	fmt.Fprintf(&b, "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE auth_sessions TO %s;\n", role)
 	fmt.Fprintf(&b, "GRANT SELECT, INSERT ON TABLE event_journal TO %s;\n", role)
 	fmt.Fprintf(&b, "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA %s TO %s;\n", schema, role)
 	fmt.Fprintf(&b, "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %s;\n", schema, role)

@@ -219,6 +219,8 @@ func runRLSStatus() {
 	fmt.Printf("role_bypass_rls=%t\n", status.RoleBypassRLS)
 	printTableRLSStatus(status.Journal, status.RoleSuperuser, status.RoleBypassRLS)
 	printTableRLSStatus(status.Stats, status.RoleSuperuser, status.RoleBypassRLS)
+	printTableRLSStatus(status.Sessions, status.RoleSuperuser, status.RoleBypassRLS)
+	printTableRLSStatus(status.AuthSessions, status.RoleSuperuser, status.RoleBypassRLS)
 	for _, warning := range status.Warnings() {
 		fmt.Printf("warning=%s\n", warning)
 	}

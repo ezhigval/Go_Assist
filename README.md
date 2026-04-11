@@ -153,6 +153,7 @@ cp config/config.example.yaml config/config.yaml
 # go run ./databases/cmd/databases app-role-sql -role=modulr_app
 # Выполни SQL под DBA/owner role, затем переключи DB_USER/DB_PASS
 # и проверь go run ./databases/cmd/databases rls-status
+# Команда покажет readiness по event_journal/stats/sessions/auth_sessions
 ```
 
 ### 3. Запуск ядра (Go)
@@ -198,6 +199,7 @@ go run ./cmd/telegram
 # Для локального superuser bootstrap DB_USER=postgres тоже допустим, но rls-status предупредит о bypass
 # На staging/production держи DB_AUTO_MIGRATE=false и запускай migrations отдельным deployment step.
 # В этом режиме sessions и trace-связанный event_journal пишутся в databases/
+# Auth модуль также может использовать DB-backed auth_sessions через databases.NewAuthSessionStore(db)
 ```
 
 ### 6. Локальный AI-стек (опционально)

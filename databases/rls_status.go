@@ -48,20 +48,24 @@ func (s TableRLSStatus) warnings(roleSuperuser, roleBypassRLS bool) []string {
 	return warnings
 }
 
-// StorageRLSStatus описывает RLS-готовность текущей DB role для защищённых таблиц.
+// StorageRLSStatus описывает RLS-готовность текущей DB role для защищённых storage/auth таблиц.
 type StorageRLSStatus struct {
 	CurrentUser   string         `json:"current_user"`
 	RoleSuperuser bool           `json:"role_superuser"`
 	RoleBypassRLS bool           `json:"role_bypass_rls"`
 	Journal       TableRLSStatus `json:"journal"`
 	Stats         TableRLSStatus `json:"stats"`
+	Sessions      TableRLSStatus `json:"sessions"`
+	AuthSessions  TableRLSStatus `json:"auth_sessions"`
 }
 
-// Effective сообщает, что все текущие scope-bound таблицы реально защищены для текущей DB role.
+// Effective сообщает, что все текущие storage/auth таблицы реально защищены для текущей DB role.
 func (s StorageRLSStatus) Effective() bool {
 	return s.CurrentUser != "" &&
 		s.Journal.Effective(s.RoleSuperuser, s.RoleBypassRLS) &&
-		s.Stats.Effective(s.RoleSuperuser, s.RoleBypassRLS)
+		s.Stats.Effective(s.RoleSuperuser, s.RoleBypassRLS) &&
+		s.Sessions.Effective(s.RoleSuperuser, s.RoleBypassRLS) &&
+		s.AuthSessions.Effective(s.RoleSuperuser, s.RoleBypassRLS)
 }
 
 // Warnings возвращает все причины, по которым storage RLS может быть неэффективен.
@@ -72,11 +76,13 @@ func (s StorageRLSStatus) Warnings() []string {
 	}
 	warnings = append(warnings, s.Journal.warnings(s.RoleSuperuser, s.RoleBypassRLS)...)
 	warnings = append(warnings, s.Stats.warnings(s.RoleSuperuser, s.RoleBypassRLS)...)
+	warnings = append(warnings, s.Sessions.warnings(s.RoleSuperuser, s.RoleBypassRLS)...)
+	warnings = append(warnings, s.AuthSessions.warnings(s.RoleSuperuser, s.RoleBypassRLS)...)
 	return warnings
 }
 
 // InspectStorageRLS читает метаданные PostgreSQL и возвращает готовность DB-enforced policy
-// для текущих scope-bound таблиц (`event_journal`, `stats`).
+// для текущих scope-bound и auth-bound таблиц (`event_journal`, `stats`, `sessions`, `auth_sessions`).
 func (db *DB) InspectStorageRLS(ctx context.Context) (StorageRLSStatus, error) {
 	status := StorageRLSStatus{}
 	err := db.pool.QueryRow(ctx, `
@@ -96,8 +102,18 @@ func (db *DB) InspectStorageRLS(ctx context.Context) (StorageRLSStatus, error) {
 	if err != nil {
 		return StorageRLSStatus{}, err
 	}
+	sessions, err := db.inspectTableRLS(ctx, "sessions", "sessions_chat_select", "sessions_chat_write")
+	if err != nil {
+		return StorageRLSStatus{}, err
+	}
+	authSessions, err := db.inspectTableRLS(ctx, "auth_sessions", "auth_sessions_token_select", "auth_sessions_token_write")
+	if err != nil {
+		return StorageRLSStatus{}, err
+	}
 	status.Journal = journal
 	status.Stats = stats
+	status.Sessions = sessions
+	status.AuthSessions = authSessions
 	return status, nil
 }
 

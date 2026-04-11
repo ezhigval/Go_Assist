@@ -46,8 +46,10 @@ func (db *DB) GetSession(ctx context.Context, chatID int64) (*Session, error) {
 	s := &Session{Payload: make(map[string]interface{})}
 	var payloadBytes []byte
 
-	err := db.pool.QueryRow(ctx, "SELECT id, chat_id, state, active_scope, payload, updated_at FROM sessions WHERE chat_id = $1", chatID).
-		Scan(&s.ID, &s.ChatID, &s.State, &s.ActiveScope, &payloadBytes, &s.UpdatedAt)
+	err := db.withStorageAccess(ctx, sessionReadAccess(chatID), func(tx pgx.Tx) error {
+		return tx.QueryRow(ctx, "SELECT id, chat_id, state, active_scope, payload, updated_at FROM sessions WHERE chat_id = $1", chatID).
+			Scan(&s.ID, &s.ChatID, &s.State, &s.ActiveScope, &payloadBytes, &s.UpdatedAt)
+	})
 
 	if err == pgx.ErrNoRows {
 		// Возвращаем пустую сессию, а не ошибку
@@ -75,13 +77,21 @@ func (db *DB) SetSession(ctx context.Context, chatID int64, state string, payloa
 	query := `
 		INSERT INTO sessions (chat_id, state, active_scope, payload) VALUES ($1, $2, $3, $4)
 		ON CONFLICT (chat_id) DO UPDATE SET state = $2, active_scope = $3, payload = $4, updated_at = NOW()`
-	_, err := db.pool.Exec(ctx, query, chatID, state, activeScope, payloadBytes)
-	return err
+	access, err := sessionWriteAccess(chatID, activeScope)
+	if err != nil {
+		return err
+	}
+	return db.withStorageAccess(ctx, access, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, query, chatID, state, activeScope, payloadBytes)
+		return err
+	})
 }
 
 func (db *DB) ClearSession(ctx context.Context, chatID int64) error {
-	_, err := db.pool.Exec(ctx, "DELETE FROM sessions WHERE chat_id = $1", chatID)
-	return err
+	return db.withStorageAccess(ctx, sessionReadAccess(chatID), func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, "DELETE FROM sessions WHERE chat_id = $1", chatID)
+		return err
+	})
 }
 
 // --- Журнал событий ---
@@ -125,7 +135,7 @@ func (db *DB) AppendJournalEvent(ctx context.Context, entry EventJournalEntry) (
 		return nil, err
 	}
 
-	err = db.withScopeAccess(ctx, access, func(tx pgx.Tx) error {
+	err = db.withStorageAccess(ctx, access, func(tx pgx.Tx) error {
 		return tx.QueryRow(ctx, query,
 			entry.TraceID,
 			entry.ChatID,
@@ -180,7 +190,7 @@ func (db *DB) ListJournalEventsByTraceScoped(ctx context.Context, traceID string
 
 	var entries []EventJournalEntry
 	if filter.Unrestricted() {
-		err := db.withScopeAccess(ctx, access, func(tx pgx.Tx) error {
+		err := db.withStorageAccess(ctx, access, func(tx pgx.Tx) error {
 			rows, err := tx.Query(ctx, `
 				SELECT id, trace_id, chat_id, scope, event_name, status, source, payload, metadata, created_at
 				FROM event_journal
@@ -199,7 +209,7 @@ func (db *DB) ListJournalEventsByTraceScoped(ctx context.Context, traceID string
 		return entries, err
 	}
 
-	err = db.withScopeAccess(ctx, access, func(tx pgx.Tx) error {
+	err = db.withStorageAccess(ctx, access, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, `
 			SELECT id, trace_id, chat_id, scope, event_name, status, source, payload, metadata, created_at
 			FROM event_journal
@@ -233,7 +243,7 @@ func (db *DB) ListJournalEventsByChatScoped(ctx context.Context, chatID int64, f
 
 	var entries []EventJournalEntry
 	if filter.Unrestricted() {
-		err := db.withScopeAccess(ctx, access, func(tx pgx.Tx) error {
+		err := db.withStorageAccess(ctx, access, func(tx pgx.Tx) error {
 			rows, err := tx.Query(ctx, `
 				SELECT id, trace_id, chat_id, scope, event_name, status, source, payload, metadata, created_at
 				FROM event_journal
@@ -252,7 +262,7 @@ func (db *DB) ListJournalEventsByChatScoped(ctx context.Context, chatID int64, f
 		return entries, err
 	}
 
-	err = db.withScopeAccess(ctx, access, func(tx pgx.Tx) error {
+	err = db.withStorageAccess(ctx, access, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, `
 			SELECT id, trace_id, chat_id, scope, event_name, status, source, payload, metadata, created_at
 			FROM event_journal
@@ -284,7 +294,7 @@ func (db *DB) LogAction(ctx context.Context, userID int64, action string, metada
 	if err != nil {
 		return err
 	}
-	err = db.withScopeAccess(ctx, access, func(tx pgx.Tx) error {
+	err = db.withStorageAccess(ctx, access, func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx, "INSERT INTO stats (user_id, action, scope, metadata) VALUES ($1, $2, $3, $4)", userID, action, scope, metaBytes)
 		return err
 	})
@@ -294,7 +304,7 @@ func (db *DB) LogAction(ctx context.Context, userID int64, action string, metada
 
 func (db *DB) GetStats(ctx context.Context) (*StatsSummary, error) {
 	s := &StatsSummary{}
-	err := db.withScopeAccess(ctx, scopeAccess{Bypass: true}, func(tx pgx.Tx) error {
+	err := db.withStorageAccess(ctx, storageAccess{Bypass: true}, func(tx pgx.Tx) error {
 		query := `
 			SELECT 
 				(SELECT COUNT(*) FROM users),
@@ -316,7 +326,7 @@ func (db *DB) GetActionStatsScoped(ctx context.Context, filter JournalScopeFilte
 		ScopeCounts:  make(map[string]int64),
 		ActionCounts: make(map[string]int64),
 	}
-	err = db.withScopeAccess(ctx, access, func(tx pgx.Tx) error {
+	err = db.withStorageAccess(ctx, access, func(tx pgx.Tx) error {
 		if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM stats").Scan(&summary.TotalActions); err != nil {
 			return err
 		}

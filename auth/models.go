@@ -13,10 +13,12 @@ const (
 
 // Session сессия после успешной аутентификации.
 type Session struct {
-	Token     string
-	UserID    string
-	Roles     []Role
-	CreatedAt time.Time
-	ExpiresAt time.Time
-	Meta      map[string]any
+	Token         string
+	UserID        string
+	Scope         string
+	AllowedScopes []string
+	Roles         []Role
+	CreatedAt     time.Time
+	ExpiresAt     time.Time
+	Meta          map[string]any
 }

@@ -24,7 +24,7 @@ func (m *MemorySessionStore) Put(_ context.Context, token string, s *Session) er
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.data[token] = s
+	m.data[token] = cloneSession(s)
 	return nil
 }
 
@@ -36,7 +36,7 @@ func (m *MemorySessionStore) Get(_ context.Context, token string) (*Session, err
 	if !ok {
 		return nil, fmt.Errorf("auth: session not found")
 	}
-	return s, nil
+	return cloneSession(s), nil
 }
 
 // Delete удаляет сессию.
@@ -45,4 +45,24 @@ func (m *MemorySessionStore) Delete(_ context.Context, token string) error {
 	defer m.mu.Unlock()
 	delete(m.data, token)
 	return nil
+}
+
+func cloneSession(src *Session) *Session {
+	if src == nil {
+		return nil
+	}
+	dst := *src
+	if len(src.Roles) != 0 {
+		dst.Roles = append([]Role(nil), src.Roles...)
+	}
+	if len(src.AllowedScopes) != 0 {
+		dst.AllowedScopes = append([]string(nil), src.AllowedScopes...)
+	}
+	if len(src.Meta) != 0 {
+		dst.Meta = make(map[string]any, len(src.Meta))
+		for k, v := range src.Meta {
+			dst.Meta[k] = v
+		}
+	}
+	return &dst
 }
