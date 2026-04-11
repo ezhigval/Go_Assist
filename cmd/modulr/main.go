@@ -39,12 +39,21 @@ func main() {
 	if err != nil {
 		log.Fatalf("runtime stats: %v", err)
 	}
+	metricsSnapshot := rt.Metrics().Snapshot(5)
 	keys, err := rt.Store().ListPrefix(ctx, "tracker:check:")
 	if err != nil {
 		log.Fatalf("storage list: %v", err)
 	}
 
-	log.Printf("runtime trace=%s checklist_items=%d errors=%d events=%v", traceID, len(keys), stats.ErrorCount, stats.EventCounts)
+	log.Printf(
+		"runtime trace=%s checklist_items=%d errors=%d events=%v scope_counts=%v traces=%v",
+		traceID,
+		len(keys),
+		stats.ErrorCount,
+		stats.EventCounts,
+		metricsSnapshot.ScopeCounts,
+		metricsSnapshot.Traces,
+	)
 }
 
 func getEnv(key, fallback string) string {

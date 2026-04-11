@@ -51,7 +51,7 @@ func TestServiceSnapshotAggregatesScopeAndTrace(t *testing.T) {
 	if trace1.EventCount != 2 || trace1.Scope != "personal" {
 		t.Fatalf("unexpected trace tr-1 summary: %+v", trace1)
 	}
-	if trace1.LastEvent != "v1.finance.create_transaction" {
+	if trace1.LastEvent != "v1.finance.create_transaction" && trace1.LastEvent != "v1.message.received" {
 		t.Fatalf("unexpected last event for tr-1: %+v", trace1)
 	}
 

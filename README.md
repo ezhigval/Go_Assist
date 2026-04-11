@@ -46,6 +46,7 @@ Data Layer (PostgreSQL | Redis | Vector DB | Local Storage)
 - [Экосистема и модули](./ARCHITECTURE.md#-экосистема-модули)
 - [Матрица событий v1](./EVENT_MATRIX.md)
 - [AI-архитектура](./ai/AI_ARCHITECTURE.md)
+- [Metrics / Observability](./metrics/README.md)
 - [Frontend-стандарты](./frontend/FRONTEND_RULES.md)
 
 ---
@@ -151,6 +152,7 @@ go mod tidy
 go run main.go
 # Runtime поднимет orchestrator + bus bridge + доменные модули
 # и прогонит demo-сообщение через общий message flow
+# В логе также появятся scope_counts и короткий trace-summary из metrics/
 ```
 
 Опционально:
