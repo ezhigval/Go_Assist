@@ -44,6 +44,7 @@ Data Layer (PostgreSQL | Redis | Vector DB | Local Storage)
 **Документация:**
 - [Проектные правила](./PROJECT_RULES.md)
 - [Экосистема и модули](./ARCHITECTURE.md#-экосистема-модули)
+- [Матрица событий v1](./EVENT_MATRIX.md)
 - [AI-архитектура](./ai/AI_ARCHITECTURE.md)
 - [Frontend-стандарты](./frontend/FRONTEND_RULES.md)
 
@@ -262,6 +263,7 @@ docker compose -f docker-compose.local.yml up -d
 
 **Детальный план:**
 - [Основной Roadmap](./ROADMAP.md)
+- [Матрица событий v1](./EVENT_MATRIX.md)
 - [AI Roadmap](./ai/AI_ROADMAP.md)
 - [Frontend Roadmap](./frontend/FRONTEND_ROADMAP.md)
 

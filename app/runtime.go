@@ -106,8 +106,8 @@ func (r *Runtime) Start(ctx context.Context) error {
 	if err := r.bridge.Attach(ctx); err != nil {
 		return err
 	}
-	r.domainBus.Subscribe(eventOrchestratorOutcome, r.onOutcome)
-	r.domainBus.Subscribe(eventOrchestratorFallback, r.onFallback)
+	r.domainBus.Subscribe(EventOrchestratorOutcome, r.onOutcome)
+	r.domainBus.Subscribe(EventOrchestratorFallback, r.onFallback)
 
 	r.tracker.RegisterSubscriptions(r.domainBus)
 	r.finance.RegisterSubscriptions(r.domainBus)
@@ -235,7 +235,7 @@ func (r *Runtime) HandleMessageSync(ctx context.Context, msg InboundMessage) (Ha
 			TraceID:   traceID,
 			ChatID:    msg.ChatID,
 			Scope:     result.Scope,
-			EventName: "v1.transport.response.timeout",
+			EventName: string(EventTransportResponseTimeout),
 			Status:    "timeout",
 			Source:    "app/runtime",
 			Payload: map[string]any{
@@ -282,7 +282,7 @@ func (r *Runtime) onOutcome(evt events.Event) {
 		TraceID:   traceID,
 		ChatID:    int64FromAny(evt.Context["chat_id"]),
 		Scope:     firstNonEmptyString(result.Scope, string(events.DefaultSegment())),
-		EventName: string(eventOrchestratorOutcome),
+		EventName: string(EventOrchestratorOutcome),
 		Status:    result.Status,
 		Source:    evt.Source,
 		Payload:   cloneContext(payload),
@@ -308,7 +308,7 @@ func (r *Runtime) onFallback(evt events.Event) {
 		TraceID:   traceID,
 		ChatID:    int64FromAny(evt.Context["chat_id"]),
 		Scope:     firstNonEmptyString(result.Scope, string(events.DefaultSegment())),
-		EventName: string(eventOrchestratorFallback),
+		EventName: string(EventOrchestratorFallback),
 		Status:    "fallback",
 		Source:    evt.Source,
 		Payload:   cloneContext(payload),

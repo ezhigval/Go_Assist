@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	coreevents "modulr/core/events"
 	"modulr/events"
 	"modulr/finance"
 	"modulr/knowledge"
@@ -15,15 +14,8 @@ import (
 )
 
 const (
-	eventTrackerCreateReminder events.Name = "v1.tracker.create_reminder"
-	eventTrackerCreateTask     events.Name = "v1.tracker.create_task"
-	eventFinanceCreateTxn      events.Name = "v1.finance.create_transaction"
-	eventKnowledgeSaveQuery    events.Name = "v1.knowledge.save_query"
-	eventKnowledgeSaveNote     events.Name = "v1.knowledge.save_note"
-	eventOrchestratorOutcome   events.Name = events.Name(coreevents.V1OrchestratorDecisionOutcome)
-	eventOrchestratorFallback  events.Name = events.Name(coreevents.V1OrchestratorFallback)
-	outcomeSource              string      = "app/runtime"
-	defaultReminderLead                    = 24 * time.Hour
+	outcomeSource       string = "app/runtime"
+	defaultReminderLead        = 24 * time.Hour
 )
 
 type actionHandlerConfig struct {
@@ -43,15 +35,15 @@ func registerActionHandlers(cfg actionHandlerConfig) {
 	}
 
 	if cfg.tracker != nil {
-		cfg.bus.Subscribe(eventTrackerCreateReminder, cfg.onTrackerReminder)
-		cfg.bus.Subscribe(eventTrackerCreateTask, cfg.onTrackerReminder)
+		cfg.bus.Subscribe(EventTrackerCreateReminder, cfg.onTrackerReminder)
+		cfg.bus.Subscribe(EventTrackerCreateTask, cfg.onTrackerReminder)
 	}
 	if cfg.finance != nil {
-		cfg.bus.Subscribe(eventFinanceCreateTxn, cfg.onFinanceTransaction)
+		cfg.bus.Subscribe(EventFinanceCreateTxn, cfg.onFinanceTransaction)
 	}
 	if cfg.knowledge != nil {
-		cfg.bus.Subscribe(eventKnowledgeSaveQuery, cfg.onKnowledgeSave)
-		cfg.bus.Subscribe(eventKnowledgeSaveNote, cfg.onKnowledgeSave)
+		cfg.bus.Subscribe(EventKnowledgeSaveQuery, cfg.onKnowledgeSave)
+		cfg.bus.Subscribe(EventKnowledgeSaveNote, cfg.onKnowledgeSave)
 	}
 }
 
@@ -129,7 +121,7 @@ func (cfg actionHandlerConfig) publishOutcome(evt events.Event, startedAt time.T
 		scope = string(events.DefaultSegment())
 	}
 	cfg.bus.Publish(events.Event{
-		Name: eventOrchestratorOutcome,
+		Name: EventOrchestratorOutcome,
 		Payload: map[string]any{
 			"model_id":     stringFromAny(evt.Context["model_id"]),
 			"decision_id":  stringFromAny(evt.Context["decision_id"]),

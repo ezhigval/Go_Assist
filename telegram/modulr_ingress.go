@@ -71,23 +71,7 @@ func formatModulrResult(result app.HandleResult) string {
 }
 
 func humanAction(name string) string {
-	switch name {
-	case "v1.tracker.create_reminder":
-		return "создано напоминание"
-	case "v1.tracker.create_task":
-		return "создана задача"
-	case "v1.finance.create_transaction":
-		return "зарегистрирована транзакция"
-	case "v1.knowledge.save_query":
-		return "запрос сохранён в knowledge"
-	case "v1.knowledge.save_note":
-		return "заметка сохранена в knowledge"
-	default:
-		if name == "" {
-			return "действие выполнено"
-		}
-		return name
-	}
+	return app.HumanAction(name)
 }
 
 func fallbackReason(reason string) string {

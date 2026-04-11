@@ -25,6 +25,7 @@
 - [2026-04-11] | `scripts/modulr-check.sh`, `PROJECT_RULES.md`, `ROADMAP.md` | Gate обновлены под новый статус `databases/`: модуль проходит `go test ./...`, roadmap v0.3 синхронизирован с миграционным README и DB-backed session store | §4 C1, §7
 - [2026-04-11] | `databases/models.go`, `databases/repo.go`, `databases/migrations.go`, `databases/README.md`, `app/journal.go`, `app/runtime.go`, `app/runtime_test.go`, `telegram/cmd/telegram/persistence.go` | Реализован trace-связанный `event_journal`; `telegram` в PostgreSQL-режиме пишет входящие сообщения, outcome/fallback и timeout в журнал, а runtime подключает sink через интерфейс без прямой зависимости от `databases/` | §2 A4, §3 E5, §5 V1
 - [2026-04-11] | `databases/migrations.go`, `databases/migrations/*.sql`, `databases/cmd/databases/main.go`, `databases/migrations_test.go`, `databases/README.md`, `README.md`, `ROADMAP.md` | Bootstrap `schemaSQL` заменён на versioned SQL migrations runner: `schema_migrations`, checksum drift-check, advisory lock, CLI `up/down/status`, отдельный deployment step и обновлённая документация v0.3 | §3 E1, §4 C1, §7
+- [2026-04-11] | `EVENT_MATRIX.md`, `app/contracts.go`, `app/contracts_test.go`, `app/actions.go`, `app/runtime.go`, `app/runtime_test.go`, `telegram/modulr_ingress.go`, `README.md`, `ROADMAP.md` | Для v1.0 добавлена каноническая матрица событий `v1.*`, закреплены правила backward compatibility, а action event names и human-readable mapping вынесены в единый source of truth между runtime и transport | §2 A2, §5 V2, §7
 
 ---
 

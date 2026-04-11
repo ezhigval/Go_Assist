@@ -89,7 +89,7 @@ func TestRuntimeHandleMessageSyncReturnsCompletedOutcome(t *testing.T) {
 	if result.Status != "completed" {
 		t.Fatalf("unexpected result status %q", result.Status)
 	}
-	if result.ActionEvent != string(eventTrackerCreateReminder) {
+	if result.ActionEvent != string(EventTrackerCreateReminder) {
 		t.Fatalf("unexpected action event %q", result.ActionEvent)
 	}
 	if result.ModelID == "" {
@@ -131,7 +131,7 @@ func TestRuntimeHandleMessageSyncWritesJournalEntries(t *testing.T) {
 	if !containsJournalEvent(entries, string(coreevents.V1MessageReceived), "accepted") {
 		t.Fatalf("expected accepted message entry, got %+v", entries)
 	}
-	if !containsJournalEvent(entries, string(eventOrchestratorOutcome), "completed") {
+	if !containsJournalEvent(entries, string(EventOrchestratorOutcome), "completed") {
 		t.Fatalf("expected completed outcome entry, got %+v", entries)
 	}
 }
