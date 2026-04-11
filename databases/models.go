@@ -50,3 +50,10 @@ type StatsSummary struct {
 	TotalChats   int64 `json:"total_chats"`
 	TotalActions int64 `json:"total_actions"`
 }
+
+// ActionStatsSummary агрегирует action log только по видимым scope.
+type ActionStatsSummary struct {
+	TotalActions int64            `json:"total_actions"`
+	ScopeCounts  map[string]int64 `json:"scope_counts,omitempty"`
+	ActionCounts map[string]int64 `json:"action_counts,omitempty"`
+}

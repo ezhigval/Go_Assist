@@ -275,21 +275,104 @@ func (db *DB) ListJournalEventsByChatScoped(ctx context.Context, chatID int64, f
 // --- Статистика ---
 
 func (db *DB) LogAction(ctx context.Context, userID int64, action string, metadata map[string]interface{}) error {
-	metaBytes, _ := json.Marshal(metadata)
-	_, err := db.pool.Exec(ctx, "INSERT INTO stats (user_id, action, metadata) VALUES ($1, $2, $3)", userID, action, metaBytes)
+	scope, cleanedMetadata := extractStatsScope(metadata)
+	metaBytes, err := marshalJSONMap(cleanedMetadata)
+	if err != nil {
+		return fmt.Errorf("marshal stats metadata: %w", err)
+	}
+	access, err := singleScopeAccess(scope)
+	if err != nil {
+		return err
+	}
+	err = db.withScopeAccess(ctx, access, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, "INSERT INTO stats (user_id, action, scope, metadata) VALUES ($1, $2, $3, $4)", userID, action, scope, metaBytes)
+		return err
+	})
 	// STUB: Audit events require publishing anonymized events to modulr/events bus (v1.metrics.* / v1.audit.*) via EventPublisher interface, no direct Kafka dependency.
 	return err
 }
 
 func (db *DB) GetStats(ctx context.Context) (*StatsSummary, error) {
 	s := &StatsSummary{}
-	query := `
-		SELECT 
-			(SELECT COUNT(*) FROM users),
-			(SELECT COUNT(*) FROM chats),
-			(SELECT COUNT(*) FROM stats)`
-	err := db.pool.QueryRow(ctx, query).Scan(&s.TotalUsers, &s.TotalChats, &s.TotalActions)
+	err := db.withScopeAccess(ctx, scopeAccess{Bypass: true}, func(tx pgx.Tx) error {
+		query := `
+			SELECT 
+				(SELECT COUNT(*) FROM users),
+				(SELECT COUNT(*) FROM chats),
+				(SELECT COUNT(*) FROM stats)`
+		return tx.QueryRow(ctx, query).Scan(&s.TotalUsers, &s.TotalChats, &s.TotalActions)
+	})
 	return s, err
+}
+
+// GetActionStatsScoped возвращает агрегаты action log только по видимым scope.
+func (db *DB) GetActionStatsScoped(ctx context.Context, filter JournalScopeFilter) (*ActionStatsSummary, error) {
+	access, err := journalScopeAccess(filter)
+	if err != nil {
+		return nil, err
+	}
+
+	summary := &ActionStatsSummary{
+		ScopeCounts:  make(map[string]int64),
+		ActionCounts: make(map[string]int64),
+	}
+	err = db.withScopeAccess(ctx, access, func(tx pgx.Tx) error {
+		if err := tx.QueryRow(ctx, "SELECT COUNT(*) FROM stats").Scan(&summary.TotalActions); err != nil {
+			return err
+		}
+
+		scopeRows, err := tx.Query(ctx, `
+			SELECT scope, COUNT(*)
+			FROM stats
+			GROUP BY scope
+			ORDER BY scope ASC
+		`)
+		if err != nil {
+			return err
+		}
+		defer scopeRows.Close()
+		for scopeRows.Next() {
+			var scope string
+			var count int64
+			if err := scopeRows.Scan(&scope, &count); err != nil {
+				return err
+			}
+			summary.ScopeCounts[scope] = count
+		}
+		if err := scopeRows.Err(); err != nil {
+			return err
+		}
+
+		actionRows, err := tx.Query(ctx, `
+			SELECT action, COUNT(*)
+			FROM stats
+			GROUP BY action
+			ORDER BY action ASC
+		`)
+		if err != nil {
+			return err
+		}
+		defer actionRows.Close()
+		for actionRows.Next() {
+			var action string
+			var count int64
+			if err := actionRows.Scan(&action, &count); err != nil {
+				return err
+			}
+			summary.ActionCounts[action] = count
+		}
+		return actionRows.Err()
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(summary.ScopeCounts) == 0 {
+		summary.ScopeCounts = nil
+	}
+	if len(summary.ActionCounts) == 0 {
+		summary.ActionCounts = nil
+	}
+	return summary, nil
 }
 
 // --- Универсальные методы ---

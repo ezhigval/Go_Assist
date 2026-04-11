@@ -9,7 +9,7 @@
 - `sessions` — состояние transport-диалога по `chat_id`.
 - `sessions.active_scope` — явный активный life scope transport-сессии; payload остаётся для временных данных и совместимости.
 - `event_journal` — trace-связанный журнал transport/runtime событий для replay и отладки.
-- `stats` — агрегируемый action log для dev/staging.
+- `stats` — scope-aware action log для dev/staging и audit-подобных срезов.
 
 ## Миграции
 
@@ -27,6 +27,7 @@
 - `000002_event_journal_scope_indexes` — индексы под scope-aware replay журнала;
 - `000003_sessions_active_scope` — явный `active_scope` в `sessions` с backfill из legacy payload `_active_scope`.
 - `000004_event_journal_rls` — PostgreSQL RLS policy для `event_journal` с runtime context через `SET LOCAL modulr.allowed_scopes` / `modulr.scope_bypass`.
+- `000005_stats_scope_rls` — `stats.scope` + PostgreSQL RLS policy для action log.
 
 Основные команды:
 
@@ -35,6 +36,7 @@ go run ./cmd/databases up
 go run ./cmd/databases status
 go run ./cmd/databases rls-status
 go run ./cmd/databases app-role-sql -role=modulr_app
+go run ./cmd/databases stats -scope=personal
 go run ./cmd/databases down -steps=1
 go run ./cmd/databases journal -trace=<trace_id> -scope=personal
 ```
@@ -106,6 +108,13 @@ Bootstrap non-superuser app role:
 - `go run ./cmd/databases app-role-sql -role=modulr_app` печатает минимальный SQL bootstrap для application login role;
 - helper специально **не** применяет SQL автоматически: роль и grants должен подтвердить владелец БД / DBA;
 - после переключения `DB_USER`/`DB_PASS` проверь эффективный режим через `go run ./cmd/databases rls-status`.
+
+Stats scope contract:
+
+- `LogAction` теперь читает reserved key `_scope` из metadata и пишет нормализованный scope в колонку `stats.scope`;
+- если `_scope` не задан, используется `personal`;
+- `go run ./cmd/databases stats -scope=personal [-allow-scopes=business]` возвращает агрегаты только по видимым scope;
+- `000005_stats_scope_rls` повторяет тот же DB-enforced policy path, что и `event_journal`.
 
 Минимальный запрос для replay одного trace:
 

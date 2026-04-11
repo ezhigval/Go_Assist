@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -31,6 +32,8 @@ func main() {
 		runRLSStatus()
 	case "app-role-sql":
 		runAppRoleSQL(args)
+	case "stats":
+		runStats(args)
 	case "journal":
 		runJournal(args)
 	case "help", "-h", "--help":
@@ -146,7 +149,7 @@ func runJournal(args []string) {
 		log.Fatalf("❌ journal requires exactly one selector: -trace or -chat\n\n%s", usageText())
 	}
 
-	filter, err := buildJournalFilter(*scope, *allowScopes, *allScopes)
+	filter, err := buildScopeFilter(*scope, *allowScopes, *allScopes)
 	if err != nil {
 		log.Fatalf("❌ build journal filter failed: %v", err)
 	}
@@ -241,6 +244,45 @@ func runAppRoleSQL(args []string) {
 	fmt.Print(sql)
 }
 
+func runStats(args []string) {
+	flags := flag.NewFlagSet("stats", flag.ExitOnError)
+	scope := flags.String("scope", "", "base scope for scoped stats (required unless -all-scopes)")
+	allowScopes := flags.String("allow-scopes", "", "comma-separated extra scopes allowed for this read")
+	allScopes := flags.Bool("all-scopes", false, "bypass scope filter for admin/deploy tooling")
+	flags.Usage = func() {
+		fmt.Fprintln(flags.Output(), "Usage: go run ./cmd/databases stats [-scope=personal] [-allow-scopes=business,travel] [-all-scopes]")
+		flags.PrintDefaults()
+	}
+	_ = flags.Parse(args)
+
+	filter, err := buildScopeFilter(*scope, *allowScopes, *allScopes)
+	if err != nil {
+		log.Fatalf("❌ build stats filter failed: %v", err)
+	}
+
+	cfg := databases.LoadConfig()
+	cfg.AutoMigrate = false
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	db := mustInitDB(ctx, cfg)
+	defer closeDB(db)
+
+	summary, err := db.GetActionStatsScoped(ctx, filter)
+	if err != nil {
+		log.Fatalf("❌ stats query failed: %v", err)
+	}
+
+	fmt.Printf("total_actions=%d\n", summary.TotalActions)
+	for _, key := range sortedCountKeys(summary.ScopeCounts) {
+		fmt.Printf("scope_count[%s]=%d\n", key, summary.ScopeCounts[key])
+	}
+	for _, key := range sortedCountKeys(summary.ActionCounts) {
+		fmt.Printf("action_count[%s]=%d\n", key, summary.ActionCounts[key])
+	}
+}
+
 func mustInitDB(ctx context.Context, cfg databases.Config) *databases.DB {
 	db, err := databases.InitDB(ctx, cfg)
 	if err != nil {
@@ -268,6 +310,7 @@ Commands:
   status             print migration state
   rls-status         inspect effective event_journal RLS state for current DB role
   app-role-sql       print bootstrap SQL for a non-superuser application role
+  stats              print scoped stats action aggregates
   journal            print scope-aware event_journal entries by trace_id or chat_id
   serve              connect, optionally auto-migrate, and wait for shutdown
   help               print this help
@@ -277,7 +320,7 @@ Environment:
 `
 }
 
-func buildJournalFilter(baseScope, allowScopesCSV string, allScopes bool) (databases.JournalScopeFilter, error) {
+func buildScopeFilter(baseScope, allowScopesCSV string, allScopes bool) (databases.JournalScopeFilter, error) {
 	if allScopes {
 		if strings.TrimSpace(baseScope) != "" || strings.TrimSpace(allowScopesCSV) != "" {
 			return databases.JournalScopeFilter{}, fmt.Errorf("-all-scopes cannot be combined with -scope or -allow-scopes")
@@ -293,6 +336,10 @@ func buildJournalFilter(baseScope, allowScopesCSV string, allScopes bool) (datab
 		metadata["allowed_scopes"] = scopes
 	}
 	return databases.NewJournalScopeFilter(baseScope, nil, metadata)
+}
+
+func buildJournalFilter(baseScope, allowScopesCSV string, allScopes bool) (databases.JournalScopeFilter, error) {
+	return buildScopeFilter(baseScope, allowScopesCSV, allScopes)
 }
 
 func parseCSVScopes(raw string) []string {
@@ -325,4 +372,16 @@ func mustMarshalJSON(v map[string]interface{}) string {
 		return fmt.Sprintf("{\"marshal_error\":%q}", err.Error())
 	}
 	return string(raw)
+}
+
+func sortedCountKeys(m map[string]int64) []string {
+	if len(m) == 0 {
+		return nil
+	}
+	keys := make([]string, 0, len(m))
+	for key := range m {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }
