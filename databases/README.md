@@ -27,6 +27,7 @@
 go run ./cmd/databases up
 go run ./cmd/databases status
 go run ./cmd/databases down -steps=1
+go run ./cmd/databases journal -trace=<trace_id> -scope=personal
 ```
 
 Прод-правило:
@@ -91,3 +92,16 @@ ORDER BY created_at ASC, id ASC;
 
 - `idx_event_journal_trace_scope_created_at`;
 - `idx_event_journal_chat_scope_created_at`.
+
+CLI-примеры:
+
+```bash
+# Показать один trace в рамках personal scope
+go run ./cmd/databases journal -trace=trace-123 -scope=personal
+
+# Разрешить контролируемый cross-scope replay
+go run ./cmd/databases journal -trace=trace-123 -scope=personal -allow-scopes=business,travel
+
+# Админский unrestricted read-path (только для deploy/tooling)
+go run ./cmd/databases journal -chat=100500 -all-scopes -limit=20
+```

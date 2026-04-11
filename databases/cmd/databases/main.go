@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -25,6 +27,8 @@ func main() {
 		runDown(args)
 	case "status":
 		runStatus()
+	case "journal":
+		runJournal(args)
 	case "help", "-h", "--help":
 		printUsage()
 	default:
@@ -120,6 +124,73 @@ func runStatus() {
 	}
 }
 
+func runJournal(args []string) {
+	flags := flag.NewFlagSet("journal", flag.ExitOnError)
+	traceID := flags.String("trace", "", "trace_id for replay")
+	chatID := flags.Int64("chat", 0, "chat_id for reverse-chronological journal view")
+	scope := flags.String("scope", "", "base scope for scoped replay/read (required unless -all-scopes)")
+	allowScopes := flags.String("allow-scopes", "", "comma-separated extra scopes allowed for this read")
+	allScopes := flags.Bool("all-scopes", false, "bypass scope filter for admin/deploy tooling")
+	limit := flags.Int("limit", 50, "max number of journal entries")
+	flags.Usage = func() {
+		fmt.Fprintln(flags.Output(), "Usage: go run ./cmd/databases journal (-trace=<trace_id> | -chat=<chat_id>) [-scope=personal] [-allow-scopes=business,travel] [-limit=50] [-all-scopes]")
+		flags.PrintDefaults()
+	}
+	_ = flags.Parse(args)
+
+	if (*traceID == "" && *chatID == 0) || (*traceID != "" && *chatID != 0) {
+		log.Fatalf("❌ journal requires exactly one selector: -trace or -chat\n\n%s", usageText())
+	}
+
+	filter, err := buildJournalFilter(*scope, *allowScopes, *allScopes)
+	if err != nil {
+		log.Fatalf("❌ build journal filter failed: %v", err)
+	}
+
+	cfg := databases.LoadConfig()
+	cfg.AutoMigrate = false
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	db := mustInitDB(ctx, cfg)
+	defer closeDB(db)
+
+	var entries []databases.EventJournalEntry
+	switch {
+	case *traceID != "":
+		entries, err = db.ListJournalEventsByTraceScoped(ctx, *traceID, filter, *limit)
+	default:
+		entries, err = db.ListJournalEventsByChatScoped(ctx, *chatID, filter, *limit)
+	}
+	if err != nil {
+		log.Fatalf("❌ journal query failed: %v", err)
+	}
+
+	if len(entries) == 0 {
+		log.Println("journal: no rows")
+		return
+	}
+
+	for _, entry := range entries {
+		fmt.Printf("%s trace=%s chat=%d scope=%s status=%s source=%s event=%s\n",
+			entry.CreatedAt.UTC().Format(time.RFC3339),
+			entry.TraceID,
+			entry.ChatID,
+			entry.Scope,
+			entry.Status,
+			entry.Source,
+			entry.EventName,
+		)
+		if payload := mustMarshalJSON(entry.Payload); payload != "" {
+			fmt.Printf("  payload=%s\n", payload)
+		}
+		if metadata := mustMarshalJSON(entry.Metadata); metadata != "" {
+			fmt.Printf("  metadata=%s\n", metadata)
+		}
+	}
+}
+
 func mustInitDB(ctx context.Context, cfg databases.Config) *databases.DB {
 	db, err := databases.InitDB(ctx, cfg)
 	if err != nil {
@@ -145,10 +216,61 @@ Commands:
   up                 apply all pending migrations (default)
   down [-steps=N]    rollback the last N migrations
   status             print migration state
+  journal            print scope-aware event_journal entries by trace_id or chat_id
   serve              connect, optionally auto-migrate, and wait for shutdown
   help               print this help
 
 Environment:
   DB_AUTO_MIGRATE=true  affects only "serve" and application startup via databases.InitDB
 `
+}
+
+func buildJournalFilter(baseScope, allowScopesCSV string, allScopes bool) (databases.JournalScopeFilter, error) {
+	if allScopes {
+		if strings.TrimSpace(baseScope) != "" || strings.TrimSpace(allowScopesCSV) != "" {
+			return databases.JournalScopeFilter{}, fmt.Errorf("-all-scopes cannot be combined with -scope or -allow-scopes")
+		}
+		return databases.FullJournalScopeFilter(), nil
+	}
+	if strings.TrimSpace(baseScope) == "" {
+		return databases.JournalScopeFilter{}, fmt.Errorf("-scope is required unless -all-scopes is set")
+	}
+
+	metadata := map[string]any{}
+	if scopes := parseCSVScopes(allowScopesCSV); len(scopes) > 0 {
+		metadata["allowed_scopes"] = scopes
+	}
+	return databases.NewJournalScopeFilter(baseScope, nil, metadata)
+}
+
+func parseCSVScopes(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	seen := make(map[string]struct{}, len(parts))
+	for _, part := range parts {
+		scope := strings.TrimSpace(strings.ToLower(part))
+		if scope == "" {
+			continue
+		}
+		if _, ok := seen[scope]; ok {
+			continue
+		}
+		seen[scope] = struct{}{}
+		out = append(out, scope)
+	}
+	return out
+}
+
+func mustMarshalJSON(v map[string]interface{}) string {
+	if len(v) == 0 {
+		return ""
+	}
+	raw, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Sprintf("{\"marshal_error\":%q}", err.Error())
+	}
+	return string(raw)
 }
