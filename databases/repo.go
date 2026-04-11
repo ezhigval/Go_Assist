@@ -154,20 +154,43 @@ func (db *DB) AppendJournalEvent(ctx context.Context, entry EventJournalEntry) (
 }
 
 func (db *DB) ListJournalEventsByTrace(ctx context.Context, traceID string, limit int) ([]EventJournalEntry, error) {
+	return db.ListJournalEventsByTraceScoped(ctx, traceID, FullJournalScopeFilter(), limit)
+}
+
+// ListJournalEventsByTraceScoped возвращает trace replay только в пределах разрешённых scope.
+func (db *DB) ListJournalEventsByTraceScoped(ctx context.Context, traceID string, filter JournalScopeFilter, limit int) ([]EventJournalEntry, error) {
 	if traceID == "" {
 		return nil, fmt.Errorf("list journal by trace: trace_id is required")
 	}
-	if limit <= 0 {
-		limit = 50
+	if err := filter.validate(); err != nil {
+		return nil, err
+	}
+	limit = normalizeJournalLimit(limit)
+
+	if filter.Unrestricted() {
+		rows, err := db.pool.Query(ctx, `
+			SELECT id, trace_id, chat_id, scope, event_name, status, source, payload, metadata, created_at
+			FROM event_journal
+			WHERE trace_id = $1
+			ORDER BY created_at ASC, id ASC
+			LIMIT $2
+		`, traceID, limit)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		return scanJournalRows(rows)
 	}
 
 	rows, err := db.pool.Query(ctx, `
 		SELECT id, trace_id, chat_id, scope, event_name, status, source, payload, metadata, created_at
 		FROM event_journal
 		WHERE trace_id = $1
+		  AND scope = ANY($2)
 		ORDER BY created_at ASC, id ASC
-		LIMIT $2
-	`, traceID, limit)
+		LIMIT $3
+	`, traceID, filter.Scopes(), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -177,17 +200,40 @@ func (db *DB) ListJournalEventsByTrace(ctx context.Context, traceID string, limi
 }
 
 func (db *DB) ListJournalEventsByChat(ctx context.Context, chatID int64, limit int) ([]EventJournalEntry, error) {
-	if limit <= 0 {
-		limit = 50
+	return db.ListJournalEventsByChatScoped(ctx, chatID, FullJournalScopeFilter(), limit)
+}
+
+// ListJournalEventsByChatScoped возвращает журнал чата только в пределах разрешённых scope.
+func (db *DB) ListJournalEventsByChatScoped(ctx context.Context, chatID int64, filter JournalScopeFilter, limit int) ([]EventJournalEntry, error) {
+	if err := filter.validate(); err != nil {
+		return nil, err
+	}
+	limit = normalizeJournalLimit(limit)
+
+	if filter.Unrestricted() {
+		rows, err := db.pool.Query(ctx, `
+			SELECT id, trace_id, chat_id, scope, event_name, status, source, payload, metadata, created_at
+			FROM event_journal
+			WHERE chat_id = $1
+			ORDER BY created_at DESC, id DESC
+			LIMIT $2
+		`, chatID, limit)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		return scanJournalRows(rows)
 	}
 
 	rows, err := db.pool.Query(ctx, `
 		SELECT id, trace_id, chat_id, scope, event_name, status, source, payload, metadata, created_at
 		FROM event_journal
 		WHERE chat_id = $1
+		  AND scope = ANY($2)
 		ORDER BY created_at DESC, id DESC
-		LIMIT $2
-	`, chatID, limit)
+		LIMIT $3
+	`, chatID, filter.Scopes(), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -291,4 +337,11 @@ func unmarshalJSONMap(raw []byte) (map[string]interface{}, error) {
 		return nil, nil
 	}
 	return out, nil
+}
+
+func normalizeJournalLimit(limit int) int {
+	if limit <= 0 {
+		return 50
+	}
+	return limit
 }

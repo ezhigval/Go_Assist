@@ -2,7 +2,10 @@ module databases
 
 go 1.21
 
-require github.com/jackc/pgx/v5 v5.7.1
+require (
+	github.com/jackc/pgx/v5 v5.7.1
+	modulr v0.0.0
+)
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -14,3 +17,5 @@ require (
 )
 
 replace github.com/davecgh/go-spew v1.1.0 => github.com/davecgh/go-spew v1.1.1
+
+replace modulr => ..

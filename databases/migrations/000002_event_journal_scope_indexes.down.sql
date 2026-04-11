@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS idx_event_journal_chat_scope_created_at;
+DROP INDEX IF EXISTS idx_event_journal_trace_scope_created_at;

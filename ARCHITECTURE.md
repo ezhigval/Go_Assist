@@ -93,7 +93,7 @@
 ## 🗄️ Данные
 
 - **`events.Storage`** + **`MemoryStorage`** — универсальная JSON-персистентность для модулей без привязки к СУБД.  
-- **`databases/`** — PostgreSQL для прод-сценариев с Telegram/сессиями и trace-связанным event journal.  
+- **`databases/`** — PostgreSQL для прод-сценариев с Telegram/сессиями и trace-связанным event journal; read-path журнала должен идти через явный scope filter, unrestricted-доступ оставляется только admin tooling.  
 - Политики **RLS / tenant / scope** — на уровне хранилища и авторизации (развитие).
 
 ---

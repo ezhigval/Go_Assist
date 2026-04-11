@@ -71,6 +71,13 @@ go run ./cmd/databases down -steps=1
 - fallback (`v1.orchestrator.fallback.requested`, `status=fallback`);
 - transport timeout (`v1.transport.response.timeout`, `status=timeout`) при ожидании sync-ответа.
 
+Read-side policy:
+
+- запись в `event_journal` остаётся append-only;
+- для чтения replay/диагностики следует использовать scope-aware path `(*DB).ListJournalEventsByTraceScoped` / `(*DB).ListJournalEventsByChatScoped`;
+- `NewJournalScopeFilter(baseScope, tags, metadata)` повторяет runtime policy (`allowed_scopes`, `allow_scope:<segment>`) и не даёт случайно читать cross-scope записи;
+- `FullJournalScopeFilter()` оставлен только для admin/deploy tooling и совместимости со старым `DatabaseAPI`.
+
 Минимальный запрос для replay одного trace:
 
 ```sql
@@ -79,3 +86,8 @@ FROM event_journal
 WHERE trace_id = $1
 ORDER BY created_at ASC, id ASC;
 ```
+
+Под scope-aware replay на PostgreSQL добавлены индексы `000002_event_journal_scope_indexes`:
+
+- `idx_event_journal_trace_scope_created_at`;
+- `idx_event_journal_chat_scope_created_at`.
