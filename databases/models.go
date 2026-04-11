@@ -22,11 +22,12 @@ type Chat struct {
 
 // Session хранит состояние диалога и временные данные
 type Session struct {
-	ID        int64                  `json:"id"`
-	ChatID    int64                  `json:"chat_id"`
-	State     string                 `json:"state"`
-	Payload   map[string]interface{} `json:"payload,omitempty"`
-	UpdatedAt time.Time              `json:"updated_at"`
+	ID          int64                  `json:"id"`
+	ChatID      int64                  `json:"chat_id"`
+	State       string                 `json:"state"`
+	ActiveScope string                 `json:"active_scope"`
+	Payload     map[string]interface{} `json:"payload,omitempty"`
+	UpdatedAt   time.Time              `json:"updated_at"`
 }
 
 // EventJournalEntry хранит trace-связанный журнал transport/runtime событий.

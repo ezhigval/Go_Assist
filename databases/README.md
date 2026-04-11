@@ -7,6 +7,7 @@
 - `users` — Telegram-пользователи.
 - `chats` — чаты и каналы.
 - `sessions` — состояние transport-диалога по `chat_id`.
+- `sessions.active_scope` — явный активный life scope transport-сессии; payload остаётся для временных данных и совместимости.
 - `event_journal` — trace-связанный журнал transport/runtime событий для replay и отладки.
 - `stats` — агрегируемый action log для dev/staging.
 
@@ -20,6 +21,11 @@
 - раннер использует `pg_advisory_lock`, чтобы два deploy-процесса не применяли миграции одновременно
 
 Базовая transport/schema зафиксирована в `000001_initial_transport_schema`.
+
+Дополнительные additive-миграции:
+
+- `000002_event_journal_scope_indexes` — индексы под scope-aware replay журнала;
+- `000003_sessions_active_scope` — явный `active_scope` в `sessions` с backfill из legacy payload `_active_scope`.
 
 Основные команды:
 
@@ -59,7 +65,7 @@ go run ./cmd/databases journal -trace=<trace_id> -scope=personal
 `telegram/cmd/telegram` может использовать PostgreSQL-backed store для `state.Store`:
 
 - `TELEGRAM_STATE_STORE=memory` — дефолтный режим.
-- `TELEGRAM_STATE_STORE=postgres` — состояние чатов хранится в `sessions`, а runtime пишет trace-связанные записи в `event_journal`.
+- `TELEGRAM_STATE_STORE=postgres` — состояние чатов хранится в `sessions`, active scope пишется в отдельное поле `sessions.active_scope`, а runtime пишет trace-связанные записи в `event_journal`.
 
 Этот режим использует `GetOrCreateChat` как минимальный bootstrap для FK `sessions.chat_id -> chats.tg_id`. Обогащение metadata чата (`title`, `type`) остаётся задачей transport sync.
 

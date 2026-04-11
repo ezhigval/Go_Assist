@@ -46,13 +46,14 @@ func (db *DB) GetSession(ctx context.Context, chatID int64) (*Session, error) {
 	s := &Session{Payload: make(map[string]interface{})}
 	var payloadBytes []byte
 
-	err := db.pool.QueryRow(ctx, "SELECT id, chat_id, state, payload, updated_at FROM sessions WHERE chat_id = $1", chatID).
-		Scan(&s.ID, &s.ChatID, &s.State, &payloadBytes, &s.UpdatedAt)
+	err := db.pool.QueryRow(ctx, "SELECT id, chat_id, state, active_scope, payload, updated_at FROM sessions WHERE chat_id = $1", chatID).
+		Scan(&s.ID, &s.ChatID, &s.State, &s.ActiveScope, &payloadBytes, &s.UpdatedAt)
 
 	if err == pgx.ErrNoRows {
 		// Возвращаем пустую сессию, а не ошибку
 		s.ChatID = chatID
 		s.State = "idle"
+		s.ActiveScope = "personal"
 		return s, nil
 	}
 	if err != nil {
@@ -64,15 +65,17 @@ func (db *DB) GetSession(ctx context.Context, chatID int64) (*Session, error) {
 			return nil, fmt.Errorf("unmarshal session payload: %w", err)
 		}
 	}
+	s.Payload = hydrateSessionPayload(s.Payload, s.ActiveScope)
 	return s, nil
 }
 
 func (db *DB) SetSession(ctx context.Context, chatID int64, state string, payload map[string]interface{}) error {
-	payloadBytes, _ := json.Marshal(payload)
+	activeScope, cleanedPayload := extractSessionActiveScope(payload)
+	payloadBytes, _ := json.Marshal(cleanedPayload)
 	query := `
-		INSERT INTO sessions (chat_id, state, payload) VALUES ($1, $2, $3)
-		ON CONFLICT (chat_id) DO UPDATE SET state = $2, payload = $3, updated_at = NOW()`
-	_, err := db.pool.Exec(ctx, query, chatID, state, payloadBytes)
+		INSERT INTO sessions (chat_id, state, active_scope, payload) VALUES ($1, $2, $3, $4)
+		ON CONFLICT (chat_id) DO UPDATE SET state = $2, active_scope = $3, payload = $4, updated_at = NOW()`
+	_, err := db.pool.Exec(ctx, query, chatID, state, activeScope, payloadBytes)
 	return err
 }
 
