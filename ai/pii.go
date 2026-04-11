@@ -11,7 +11,7 @@ var (
 // RedactPII скрывает базовые PII-паттерны перед передачей текста во внешние LLM.
 func RedactPII(text string) string {
 	out := emailPattern.ReplaceAllString(text, "<redacted:email>")
-	out = phonePattern.ReplaceAllString(out, "<redacted:phone>")
 	out = cardPattern.ReplaceAllString(out, "<redacted:card>")
+	out = phonePattern.ReplaceAllString(out, "<redacted:phone>")
 	return out
 }

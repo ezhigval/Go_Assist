@@ -50,9 +50,41 @@ func TestPipelineDispatchFilterAppliesThresholdScopeAndRegistry(t *testing.T) {
 		{ID: "bad_endpoint", Target: "media", Action: "register", Confidence: 0.95, Scope: "business"},
 	}
 
-	filtered := pipe.DispatchFilter(decs)
+	filtered := pipe.DispatchFilter("business", nil, nil, decs)
 	if len(filtered) != 1 || filtered[0].ID != "ok" {
 		t.Fatalf("DispatchFilter returned %+v, want only decision ok", filtered)
+	}
+}
+
+func TestPipelineDispatchFilterRejectsCrossScopeWithoutExplicitPolicy(t *testing.T) {
+	reg := NewModuleRegistry()
+	if err := reg.RegisterModule("finance", []string{"create_transaction"}); err != nil {
+		t.Fatalf("RegisterModule returned error: %v", err)
+	}
+	pipe := NewPipeline(coreevents.NewMemoryBus(), reg, NewMonitor(), 0.8)
+
+	filtered := pipe.DispatchFilter("personal", nil, nil, []aiengine.Decision{
+		{ID: "cross", Target: "finance", Action: "create_transaction", Confidence: 0.95, Scope: "business"},
+	})
+	if len(filtered) != 0 {
+		t.Fatalf("expected cross-scope decision to be filtered out, got %+v", filtered)
+	}
+}
+
+func TestPipelineDispatchFilterAllowsCrossScopeFromMetadataPolicy(t *testing.T) {
+	reg := NewModuleRegistry()
+	if err := reg.RegisterModule("finance", []string{"create_transaction"}); err != nil {
+		t.Fatalf("RegisterModule returned error: %v", err)
+	}
+	pipe := NewPipeline(coreevents.NewMemoryBus(), reg, NewMonitor(), 0.8)
+
+	filtered := pipe.DispatchFilter("personal", nil, map[string]any{
+		"allowed_scopes": []string{"business"},
+	}, []aiengine.Decision{
+		{ID: "cross", Target: "finance", Action: "create_transaction", Confidence: 0.95, Scope: "business"},
+	})
+	if len(filtered) != 1 || filtered[0].ID != "cross" {
+		t.Fatalf("expected metadata policy to allow cross-scope decision, got %+v", filtered)
 	}
 }
 

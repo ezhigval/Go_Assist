@@ -139,7 +139,9 @@ cp config/config.example.yaml config/config.yaml
 # Заполни переменные (минимум для локального запуска):
 # TELEGRAM_TOKEN=your_bot_token
 # DB_DSN=postgres://user:pass@localhost:5432/modulr?sslmode=disable
-# AI_PROVIDER=openai  # или "local" для самохостинга
+# AI_PROVIDER=local   # или оставь unset/"stub" для детерминированного fallback
+# AI_PROVIDER_BASE_URL=http://127.0.0.1:8000
+# AI_ALLOW_STUB_FALLBACK=true
 ```
 
 ### 3. Запуск ядра (Go)
@@ -189,11 +191,17 @@ go run ./cmd/telegram
 cd ai
 docker compose -f docker-compose.local.yml up -d
 # Запустит Ollama + FastAPI-сервисы для локального инференса
+
+# Затем для core/aiengine:
+cd ..
+AI_PROVIDER=local AI_PROVIDER_BASE_URL=http://127.0.0.1:8000 go run ./core
+# Если local provider недоступен, при AI_ALLOW_STUB_FALLBACK=true runtime откатится на stub decisions.
 ```
 
 **Полная документация:**
 - [Установка и настройка](#70-быстрый-старт)
 - [Конфигурация](#70-быстрый-старт)
+- [Release Template](./RELEASE_TEMPLATE.md)
 - [API Reference](./README.md)
 
 ---
@@ -264,6 +272,7 @@ docker compose -f docker-compose.local.yml up -d
 **Детальный план:**
 - [Основной Roadmap](./ROADMAP.md)
 - [Матрица событий v1](./EVENT_MATRIX.md)
+- [Release Template](./RELEASE_TEMPLATE.md)
 - [AI Roadmap](./ai/AI_ROADMAP.md)
 - [Frontend Roadmap](./frontend/FRONTEND_ROADMAP.md)
 

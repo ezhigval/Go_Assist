@@ -16,6 +16,7 @@ import (
 	"modulr/events"
 	"modulr/finance"
 	"modulr/knowledge"
+	"modulr/metrics"
 	"modulr/scheduler"
 	"modulr/tracker"
 )
@@ -51,13 +52,14 @@ type Runtime struct {
 	domainBus *events.Bus
 	coreBus   *coreevents.MemoryBus
 	bridge    *busbridge.Bridge
-	ai        *aiengine.Engine
+	ai        aiengine.AIEngine
 	orch      *orchestrator.Orchestrator
 	store     *events.MemoryStorage
 
 	tracker   *tracker.Service
 	finance   *finance.Service
 	knowledge *knowledge.Service
+	metrics   *metrics.Service
 	scheduler *scheduler.Service
 	journal   EventJournal
 
@@ -84,6 +86,7 @@ func NewRuntime(opts ...RuntimeOption) *Runtime {
 		tracker:   tracker.NewService(store, domainBus),
 		finance:   finance.NewService(store, domainBus),
 		knowledge: knowledge.NewService(store, domainBus),
+		metrics:   metrics.NewService(metrics.LoadConfig(), domainBus, events.NewMemoryIdempotency()),
 		scheduler: scheduler.NewService(scheduler.LoadConfig(), domainBus, events.NewMemoryIdempotency()),
 		waiters:   make(map[string][]chan HandleResult),
 	}
@@ -118,6 +121,9 @@ func (r *Runtime) Start(ctx context.Context) error {
 		finance:   r.finance,
 		knowledge: r.knowledge,
 	})
+	if err := r.metrics.Start(ctx); err != nil {
+		return err
+	}
 
 	if err := r.scheduler.Start(ctx); err != nil {
 		return err
@@ -142,7 +148,10 @@ func (r *Runtime) Stop(ctx context.Context) error {
 	if err := r.orch.Stop(ctx); err != nil {
 		return err
 	}
-	return r.scheduler.Stop()
+	if err := r.scheduler.Stop(); err != nil {
+		return err
+	}
+	return r.metrics.Stop()
 }
 
 // HandleMessage публикует входящее сообщение на шину ядра.
@@ -261,6 +270,11 @@ func (r *Runtime) Store() *events.MemoryStorage {
 // Orchestrator возвращает оркестратор для метрик/диагностики.
 func (r *Runtime) Orchestrator() *orchestrator.Orchestrator {
 	return r.orch
+}
+
+// Metrics возвращает runtime metrics-сервис для observability/диагностики.
+func (r *Runtime) Metrics() *metrics.Service {
+	return r.metrics
 }
 
 func (r *Runtime) onOutcome(evt events.Event) {

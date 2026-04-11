@@ -65,18 +65,25 @@ func (p *Pipeline) Prioritize(decs []aiengine.Decision) []aiengine.Decision {
 	return out
 }
 
-// DispatchFilter возвращает решения, прошедшие порог и реестр эндпоинтов.
-func (p *Pipeline) DispatchFilter(decs []aiengine.Decision) []aiengine.Decision {
+// DispatchFilter возвращает решения, прошедшие порог, реестр эндпоинтов и scope-policy.
+func (p *Pipeline) DispatchFilter(scope string, tags []string, metadata map[string]any, decs []aiengine.Decision) []aiengine.Decision {
 	var ok []aiengine.Decision
 	for _, d := range decs {
 		if d.Confidence < p.threshold {
 			continue
 		}
-		if d.Scope != "" && !events.IsValidSegment(events.Segment(d.Scope)) {
+		effectiveScope := firstNonEmpty(d.Scope, scope)
+		if effectiveScope != "" && !events.IsValidSegment(events.Segment(effectiveScope)) {
+			continue
+		}
+		if scope != "" && !events.ScopeAllowed(events.Segment(scope), events.Segment(effectiveScope), tags, metadata) {
 			continue
 		}
 		if !p.reg.HasEndpoint(d.Target, d.Action) {
 			continue
+		}
+		if d.Scope == "" {
+			d.Scope = effectiveScope
 		}
 		ok = append(ok, d)
 	}

@@ -3,6 +3,9 @@ package app
 import (
 	"context"
 	"time"
+
+	"modulr/core/aiengine"
+	"modulr/core/orchestrator"
 )
 
 // JournalRecord запись для внешнего trace/journal sink.
@@ -30,5 +33,16 @@ type RuntimeOption func(*Runtime)
 func WithEventJournal(journal EventJournal) RuntimeOption {
 	return func(r *Runtime) {
 		r.journal = journal
+	}
+}
+
+// WithAIEngine заменяет AI engine runtime и пересобирает orchestrator поверх той же core bus.
+func WithAIEngine(engine aiengine.AIEngine) RuntimeOption {
+	return func(r *Runtime) {
+		if engine == nil {
+			return
+		}
+		r.ai = engine
+		r.orch = orchestrator.NewOrchestrator(r.coreBus, r.ai, 0.7)
 	}
 }

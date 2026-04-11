@@ -46,6 +46,13 @@
 
 Сущности доменных пакетов используют поле **`Context`** типа `Segment` в JSON как **life scope** (историческое имя поля — `context`).
 
+Правило runtime-level изоляции: `Decision.Scope` не может бесшумно сменить исходный scope запроса. Cross-scope путь разрешается только явно:
+
+- metadata `allowed_scopes: ["business", ...]`;
+- или tag `allow_scope:<segment>`.
+
+Иначе orchestrator отфильтрует решение до dispatch.
+
 ---
 
 ## 📡 Две шины (текущее состояние)

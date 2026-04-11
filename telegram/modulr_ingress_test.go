@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -76,5 +77,69 @@ func TestRegisterModulrIngressFormatsCompletedResult(t *testing.T) {
 	}
 	if rt.msg.Scope != "family" || rt.msg.Source != "telegram" {
 		t.Fatalf("unexpected ingress message: %+v", rt.msg)
+	}
+}
+
+func TestRegisterModulrIngressFormatsFallbackTimeoutAndFailedResults(t *testing.T) {
+	cases := []struct {
+		name   string
+		result app.HandleResult
+		want   []string
+	}{
+		{
+			name: "fallback",
+			result: app.HandleResult{
+				TraceID: "tr-fallback",
+				Status:  "fallback",
+				Reason:  "manual_confirm_or_rules",
+			},
+			want: []string{"Нужна ручная проверка", "manual_confirm_or_rules", "tr-fallback"},
+		},
+		{
+			name: "timeout",
+			result: app.HandleResult{
+				TraceID: "tr-timeout",
+				Status:  "timeout",
+			},
+			want: []string{"Запрос принят в обработку", "tr-timeout"},
+		},
+		{
+			name: "failed",
+			result: app.HandleResult{
+				TraceID: "tr-failed",
+				Status:  "failed",
+				Error:   "storage error",
+			},
+			want: []string{"Действие завершилось с ошибкой", "storage error", "tr-failed"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			api := &fakeBotAPI{}
+			rt := &fakeRuntime{result: tc.result}
+
+			if err := RegisterModulrIngress(api, rt, "personal", time.Second); err != nil {
+				t.Fatalf("RegisterModulrIngress returned error: %v", err)
+			}
+
+			resp, err := api.textHandler(context.Background(), &handler.Request{
+				ChatID:   10,
+				UserID:   20,
+				Username: "bob",
+				Text:     "test",
+			})
+			if err != nil {
+				t.Fatalf("handler returned error: %v", err)
+			}
+			if resp == nil {
+				t.Fatalf("expected response")
+			}
+			for _, needle := range tc.want {
+				if !strings.Contains(resp.Text, needle) {
+					t.Fatalf("response %q does not contain %q", resp.Text, needle)
+				}
+			}
+		})
 	}
 }
