@@ -60,6 +60,36 @@ func TestRouterHandleReturnsStoreError(t *testing.T) {
 	}
 }
 
+func TestRouterHandlePreservesPayloadOnlyState(t *testing.T) {
+	store := state.NewMemoryStore()
+	router := NewRouter(store)
+	router.RegisterText("", func(ctx context.Context, req *Request) (*Response, error) {
+		return &Response{Text: "ok"}, nil
+	})
+
+	if err := store.Set(context.Background(), 11, state.SetActiveScope(state.Session{}, "business")); err != nil {
+		t.Fatalf("seed state: %v", err)
+	}
+
+	resp, err := router.Handle(context.Background(), tgbotapi.Update{
+		Message: &tgbotapi.Message{
+			MessageID: 10,
+			Text:      "hello",
+			Chat:      &tgbotapi.Chat{ID: 11},
+			From:      &tgbotapi.User{ID: 12, UserName: "demo"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Handle returned error: %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("expected response")
+	}
+	if got := state.ActiveScope(store.Get(context.Background(), 11)); got != "business" {
+		t.Fatalf("active scope was not preserved, got %q", got)
+	}
+}
+
 type failingStore struct {
 	err error
 }

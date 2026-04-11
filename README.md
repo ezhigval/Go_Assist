@@ -182,6 +182,7 @@ go mod tidy
 go run ./cmd/telegram
 # Требуется TELEGRAM_TOKEN
 # /start и обычные текстовые сообщения уходят в runtime ingress корневого модуля
+# Активный контекст можно переключить командой /scope business (или другой segment)
 # Опционально для PostgreSQL-backed transport persistence:
 # TELEGRAM_STATE_STORE=postgres DB_HOST=localhost DB_PORT=5432 DB_NAME=telegram_bot DB_USER=postgres DB_PASS=...
 # На staging/production держи DB_AUTO_MIGRATE=false и запускай migrations отдельным deployment step.

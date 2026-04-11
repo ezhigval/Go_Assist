@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"modulr/app"
+	"modulr/events"
 	"telegram/handler"
+	"telegram/state"
 )
 
 // RuntimeIngress контракт root runtime для handoff из transport-слоя.
@@ -20,11 +22,38 @@ func RegisterModulrIngress(api BotAPI, ingress RuntimeIngress, defaultScope stri
 	if ingress == nil {
 		return fmt.Errorf("telegram: nil runtime ingress")
 	}
-	if defaultScope == "" {
-		defaultScope = "personal"
-	}
+	defaultScope = normalizeTelegramScope(defaultScope)
 	if timeout <= 0 {
 		timeout = 3500 * time.Millisecond
+	}
+
+	if err := api.RegisterCommand("scope", func(ctx context.Context, req *handler.Request) (*handler.Response, error) {
+		currentScope := activeTelegramScope(req.State, defaultScope)
+		nextScope := parseScopeCommand(req.Text)
+		if nextScope == "" {
+			return &handler.Response{
+				Text:      fmt.Sprintf("Активный scope: `%s`\nДоступные scope: `%s`\nИспользование: `/scope <segment>`", currentScope, strings.Join(scopeNames(), "`, `")),
+				ParseMode: "Markdown",
+				NextState: state.SetActiveScope(state.Session{}, currentScope),
+			}, nil
+		}
+
+		if events.ParseSegmentFromAny(nextScope) == "" {
+			return &handler.Response{
+				Text:      fmt.Sprintf("Неизвестный scope: `%s`\nДоступные scope: `%s`", nextScope, strings.Join(scopeNames(), "`, `")),
+				ParseMode: "Markdown",
+				NextState: state.SetActiveScope(state.Session{}, currentScope),
+			}, nil
+		}
+
+		nextScope = normalizeTelegramScope(nextScope)
+		return &handler.Response{
+			Text:      fmt.Sprintf("Активный scope переключён на `%s`", nextScope),
+			ParseMode: "Markdown",
+			NextState: state.SetActiveScope(state.Session{}, nextScope),
+		}, nil
+	}); err != nil {
+		return err
 	}
 
 	return api.RegisterText("", func(ctx context.Context, req *handler.Request) (*handler.Response, error) {
@@ -32,6 +61,7 @@ func RegisterModulrIngress(api BotAPI, ingress RuntimeIngress, defaultScope stri
 		if text == "" {
 			return &handler.Response{Text: "Пока работаю только с текстовыми сообщениями."}, nil
 		}
+		activeScope := activeTelegramScope(req.State, defaultScope)
 
 		runCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
@@ -41,7 +71,7 @@ func RegisterModulrIngress(api BotAPI, ingress RuntimeIngress, defaultScope stri
 			UserID:   req.UserID,
 			Username: req.Username,
 			Text:     text,
-			Scope:    defaultScope,
+			Scope:    activeScope,
 			Source:   "telegram",
 		})
 		if err != nil {
@@ -51,6 +81,7 @@ func RegisterModulrIngress(api BotAPI, ingress RuntimeIngress, defaultScope stri
 		return &handler.Response{
 			Text:      formatModulrResult(result),
 			ParseMode: "Markdown",
+			NextState: state.SetActiveScope(state.Session{}, activeScope),
 		}, nil
 	})
 }
@@ -80,4 +111,35 @@ func fallbackReason(reason string) string {
 		return "неизвестно"
 	}
 	return reason
+}
+
+func activeTelegramScope(session state.Session, defaultScope string) string {
+	if scope := state.ActiveScope(session); scope != "" {
+		return scope
+	}
+	return normalizeTelegramScope(defaultScope)
+}
+
+func normalizeTelegramScope(scope string) string {
+	if seg := events.ParseSegmentFromAny(strings.TrimSpace(strings.ToLower(scope))); seg != "" {
+		return string(seg)
+	}
+	return string(events.DefaultSegment())
+}
+
+func parseScopeCommand(text string) string {
+	fields := strings.Fields(strings.TrimSpace(text))
+	if len(fields) < 2 {
+		return ""
+	}
+	return strings.TrimSpace(strings.ToLower(fields[1]))
+}
+
+func scopeNames() []string {
+	items := events.AllSegments()
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		out = append(out, string(item))
+	}
+	return out
 }

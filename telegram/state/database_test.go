@@ -10,7 +10,7 @@ func TestDatabaseStoreGetNormalizesIdleState(t *testing.T) {
 	store := NewDatabaseStore(&fakeSessionRepo{
 		session: StoredSession{
 			Key:     "idle",
-			Payload: map[string]interface{}{"draft": "note"},
+			Payload: map[string]interface{}{"draft": "note", "_active_scope": "travel"},
 		},
 	})
 
@@ -18,8 +18,11 @@ func TestDatabaseStoreGetNormalizesIdleState(t *testing.T) {
 	if got.Key != "" {
 		t.Fatalf("expected idle session to normalize to empty key, got %q", got.Key)
 	}
-	if got.Payload != nil {
-		t.Fatalf("expected empty session payload, got %+v", got.Payload)
+	if got.Payload["draft"] != "note" {
+		t.Fatalf("expected idle payload to be preserved, got %+v", got.Payload)
+	}
+	if ActiveScope(got) != "travel" {
+		t.Fatalf("expected active scope to survive normalization, got %+v", got.Payload)
 	}
 }
 

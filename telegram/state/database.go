@@ -68,7 +68,9 @@ func (s *DatabaseStore) Clear(ctx context.Context, chatID int64) error {
 
 func normalizeStoredSession(stored StoredSession) Session {
 	if stored.Key == "" || stored.Key == "idle" {
-		return Session{}
+		return Session{
+			Payload: clonePayload(stored.Payload),
+		}
 	}
 	return Session{
 		Key:     stored.Key,

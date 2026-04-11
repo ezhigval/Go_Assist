@@ -124,8 +124,10 @@ func (r *Router) Handle(ctx context.Context, update tgbotapi.Update) (*Response,
 		return nil, nil
 	}
 
-	// Сохраняем новое состояние
-	if resp.NextState.Key != "" {
+	// Сохраняем новое состояние; payload-only state допустим для persistent metadata
+	// вроде active scope, даже если dialog state (Key) пустой.
+	resp.NextState = state.PreserveActiveScope(req.State, resp.NextState)
+	if resp.NextState.Key != "" || len(resp.NextState.Payload) != 0 {
 		if err := r.store.Set(ctx, req.ChatID, resp.NextState); err != nil {
 			return nil, err
 		}
