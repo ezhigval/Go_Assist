@@ -208,19 +208,17 @@ func runRLSStatus() {
 	db := mustInitDB(ctx, cfg)
 	defer closeDB(db)
 
-	status, err := db.InspectJournalRLS(ctx)
+	status, err := db.InspectStorageRLS(ctx)
 	if err != nil {
-		log.Fatalf("❌ journal RLS status failed: %v", err)
+		log.Fatalf("❌ storage RLS status failed: %v", err)
 	}
 
 	fmt.Printf("current_user=%s\n", status.CurrentUser)
 	fmt.Printf("effective=%t\n", status.Effective())
 	fmt.Printf("role_superuser=%t\n", status.RoleSuperuser)
 	fmt.Printf("role_bypass_rls=%t\n", status.RoleBypassRLS)
-	fmt.Printf("table_rls_enabled=%t\n", status.TableRLSEnabled)
-	fmt.Printf("table_rls_forced=%t\n", status.TableRLSForced)
-	fmt.Printf("select_policy=%t\n", status.SelectPolicy)
-	fmt.Printf("insert_policy=%t\n", status.InsertPolicy)
+	printTableRLSStatus(status.Journal, status.RoleSuperuser, status.RoleBypassRLS)
+	printTableRLSStatus(status.Stats, status.RoleSuperuser, status.RoleBypassRLS)
 	for _, warning := range status.Warnings() {
 		fmt.Printf("warning=%s\n", warning)
 	}
@@ -308,7 +306,7 @@ Commands:
   up                 apply all pending migrations (default)
   down [-steps=N]    rollback the last N migrations
   status             print migration state
-  rls-status         inspect effective event_journal RLS state for current DB role
+  rls-status         inspect effective storage RLS state for current DB role
   app-role-sql       print bootstrap SQL for a non-superuser application role
   stats              print scoped stats action aggregates
   journal            print scope-aware event_journal entries by trace_id or chat_id
@@ -384,4 +382,12 @@ func sortedCountKeys(m map[string]int64) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+func printTableRLSStatus(status databases.TableRLSStatus, roleSuperuser, roleBypassRLS bool) {
+	fmt.Printf("table[%s].effective=%t\n", status.TableName, status.Effective(roleSuperuser, roleBypassRLS))
+	fmt.Printf("table[%s].rls_enabled=%t\n", status.TableName, status.TableRLSEnabled)
+	fmt.Printf("table[%s].rls_forced=%t\n", status.TableName, status.TableRLSForced)
+	fmt.Printf("table[%s].select_policy=%t\n", status.TableName, status.SelectPolicy)
+	fmt.Printf("table[%s].insert_policy=%t\n", status.TableName, status.InsertPolicy)
 }

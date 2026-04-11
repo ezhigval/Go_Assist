@@ -48,22 +48,22 @@ func (db *DB) Start(ctx context.Context) error {
 		return fmt.Errorf("ping DB failed: %w", err)
 	}
 	log.Printf("🟢 PostgreSQL connected to %s@%s:%s/%s", db.cfg.User, db.cfg.Host, db.cfg.Port, db.cfg.Name)
-	status, err := db.InspectJournalRLS(ctx)
+	status, err := db.InspectStorageRLS(ctx)
 	if err != nil {
-		log.Printf("⚠️ journal RLS inspection failed: %v", err)
+		log.Printf("⚠️ storage RLS inspection failed: %v", err)
 		return nil
 	}
 	log.Printf(
-		"🛡️ journal RLS effective=%t user=%s superuser=%t bypassrls=%t enabled=%t forced=%t",
+		"🛡️ storage RLS effective=%t user=%s superuser=%t bypassrls=%t journal_enabled=%t stats_enabled=%t",
 		status.Effective(),
 		status.CurrentUser,
 		status.RoleSuperuser,
 		status.RoleBypassRLS,
-		status.TableRLSEnabled,
-		status.TableRLSForced,
+		status.Journal.TableRLSEnabled,
+		status.Stats.TableRLSEnabled,
 	)
 	for _, warning := range status.Warnings() {
-		log.Printf("⚠️ journal RLS: %s", warning)
+		log.Printf("⚠️ storage RLS: %s", warning)
 	}
 	return nil
 }

@@ -100,8 +100,8 @@ DB-enforced policy:
 Диагностика готовности:
 
 - `go run ./cmd/databases rls-status` показывает, под каким DB role работает текущее соединение;
-- команда проверяет `rolsuper`, `rolbypassrls`, `relrowsecurity`, `relforcerowsecurity` и наличие policy `event_journal_scope_select` / `event_journal_scope_insert`;
-- `databases.Start()` теперь логирует тот же readiness snapshot и явно предупреждает, если приложение подключено под superuser или BYPASSRLS role.
+- команда проверяет `rolsuper`, `rolbypassrls`, `relrowsecurity`, `relforcerowsecurity` и наличие policy для `event_journal` и `stats`;
+- `databases.Start()` теперь логирует тот же readiness snapshot и явно предупреждает, если приложение подключено под superuser или BYPASSRLS role, либо одна из scope-bound таблиц не защищена policy.
 
 Bootstrap non-superuser app role:
 
