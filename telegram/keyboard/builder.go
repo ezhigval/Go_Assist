@@ -11,7 +11,7 @@ type ReplyBuilder struct {
 func NewReplyKeyboard(resize bool) *ReplyBuilder {
 	return &ReplyBuilder{
 		markup: tgbotapi.ReplyKeyboardMarkup{
-			ResizeKeyboard:  &resize,
+			ResizeKeyboard:  resize,
 			OneTimeKeyboard: false,
 			Keyboard:        [][]tgbotapi.KeyboardButton{},
 		},

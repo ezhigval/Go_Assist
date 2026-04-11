@@ -72,6 +72,7 @@ func (s *Service) onEvent(evt events.Event) {
 	s.lastSuggest = time.Now()
 	prompt := strings.Join(s.buffer, "; ")
 	s.mu.Unlock()
+	prompt = RedactPII(prompt)
 
 	ctx := context.Background()
 	text, conf, err := s.gateway.Complete(ctx, prompt)

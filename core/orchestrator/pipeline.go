@@ -110,6 +110,7 @@ func (p *Pipeline) Dispatch(ctx context.Context, chatID int64, traceID string, s
 			Context: map[string]any{
 				"trace_id":    traceID,
 				"decision_id": d.ID,
+				"model_id":    d.ModelID,
 				"confidence":  d.Confidence,
 			},
 		}

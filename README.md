@@ -146,7 +146,16 @@ cp config/config.example.yaml config/config.yaml
 cd core
 go mod tidy
 go run main.go
-# Ядро запустится в режиме polling, слушает EventBus
+# Runtime поднимет orchestrator + bus bridge + доменные модули
+# и прогонит demo-сообщение через общий message flow
+```
+
+Опционально:
+
+```bash
+MODULR_DEMO_TEXT="напоминание купить молоко после работы" \
+MODULR_DEMO_SCOPE=personal \
+go run main.go
 ```
 
 ### 4. Запуск frontend (Telegram Mini App)
@@ -157,7 +166,24 @@ npm run dev:telegram
 # Открой бота в Telegram -> нажми "Запустить веб-приложение"
 ```
 
-### 5. Локальный AI-стек (опционально)
+### 5. Запуск Telegram transport
+```bash
+cd databases
+DB_AUTO_MIGRATE=false go run ./cmd/databases up
+go run ./cmd/databases status
+
+cd ../telegram
+go mod tidy
+go run ./cmd/telegram
+# Требуется TELEGRAM_TOKEN
+# /start и обычные текстовые сообщения уходят в runtime ingress корневого модуля
+# Опционально для PostgreSQL-backed transport persistence:
+# TELEGRAM_STATE_STORE=postgres DB_HOST=localhost DB_PORT=5432 DB_NAME=telegram_bot DB_USER=postgres DB_PASS=...
+# На staging/production держи DB_AUTO_MIGRATE=false и запускай migrations отдельным deployment step.
+# В этом режиме sessions и trace-связанный event_journal пишутся в databases/
+```
+
+### 6. Локальный AI-стек (опционально)
 ```bash
 cd ai
 docker compose -f docker-compose.local.yml up -d

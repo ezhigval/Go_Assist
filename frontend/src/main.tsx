@@ -1,168 +1,67 @@
-/**
- * Main entry point for the application
- * Sets up React root and initializes platform-specific features
- */
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import './index.css';
 
-// ============================================================================
-// PLATFORM INITIALIZATION
-// ============================================================================
+type RuntimePlatform = 'telegram' | 'web' | 'mobile' | 'desktop';
 
-const initializePlatform = async () => {
-  // Initialize platform-specific features
-  if (typeof window !== 'undefined') {
-    // Set up global error handling
-    window.addEventListener('error', (event) => {
-      console.error('Global error:', event.error);
-    });
-
-    window.addEventListener('unhandledrejection', (event) => {
-      console.error('Unhandled promise rejection:', event.reason);
-    });
-
-    // Initialize platform-specific features
-    const platform = getPlatform();
-    
-    switch (platform) {
-      case 'telegram':
-        await initializeTelegram();
-        break;
-      case 'mobile':
-        await initializeMobile();
-        break;
-      case 'desktop':
-        await initializeDesktop();
-        break;
-      case 'web':
-      default:
-        await initializeWeb();
-        break;
-    }
-  }
-};
-
-const getPlatform = (): 'telegram' | 'web' | 'mobile' | 'desktop' => {
-  if ((window as any).Telegram?.WebApp) {
+function detectPlatform(): RuntimePlatform {
+  const runtime = window as unknown as {
+    Telegram?: unknown;
+    Capacitor?: unknown;
+    __TAURI__?: unknown;
+  };
+  if (typeof window !== 'undefined' && runtime.Telegram) {
     return 'telegram';
   }
-  
-  if ((window as any).Capacitor) {
+  if (typeof window !== 'undefined' && runtime.Capacitor) {
     return 'mobile';
   }
-  
-  if ((window as any).__TAURI__) {
+  if (typeof window !== 'undefined' && runtime.__TAURI__) {
     return 'desktop';
   }
-  
   return 'web';
-};
+}
 
-const initializeTelegram = async () => {
-  const webApp = (window as any).Telegram?.WebApp;
-  if (webApp) {
-    webApp.ready();
-    webApp.expand();
-    
-    // Set theme colors
-    const colorScheme = webApp.colorScheme;
-    if (colorScheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    }
-    
-    // Set up back button if needed
-    if (webApp.BackButton) {
-      webApp.BackButton.hide();
-    }
-    
-    console.log('Telegram WebApp initialized');
-  }
-};
+async function initializePlatform(): Promise<void> {
+  const platform = detectPlatform();
 
-const initializeMobile = async () => {
-  // Initialize Capacitor-specific features
-  try {
-    const { Capacitor } = await import('@capacitor/core');
-    console.log(`Capacitor initialized on ${Capacitor.getPlatform()}`);
-  } catch (error) {
-    console.error('Failed to initialize Capacitor:', error);
-  }
-};
-
-const initializeDesktop = async () => {
-  // Initialize Tauri-specific features
-  try {
-    const { invoke } = await import('@tauri-apps/api/tauri');
-    console.log('Tauri initialized');
-  } catch (error) {
-    console.error('Failed to initialize Tauri:', error);
-  }
-};
-
-const initializeWeb = async () => {
-  // Initialize web-specific features
-  if ('serviceWorker' in navigator) {
+  if (platform === 'web' && 'serviceWorker' in navigator) {
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js');
-      console.log('Service Worker registered:', registration);
+      await navigator.serviceWorker.register('/sw.js');
     } catch (error) {
-      console.error('Service Worker registration failed:', error);
+      console.warn('service worker registration failed', error);
     }
   }
-  
-  // Check for PWA installation prompt
-  window.addEventListener('beforeinstallprompt', (event) => {
-    console.log('PWA installation prompt available');
-    (window as any).__PWA_INSTALL_PROMPT = event;
+
+  window.addEventListener('error', (event) => {
+    console.error('global error', event.error);
   });
-  
-  console.log('Web platform initialized');
-};
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('unhandled rejection', event.reason);
+  });
+}
 
-// ============================================================================
-// RENDER APPLICATION
-// ============================================================================
-
-const renderApp = () => {
+function renderApp(): void {
   const rootElement = document.getElementById('root');
-  
   if (!rootElement) {
-    throw new Error('Root element not found');
+    throw new Error('root element not found');
   }
-  
-  const root = ReactDOM.createRoot(rootElement);
-  
-  root.render(
+  ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
       <App />
     </React.StrictMode>
   );
-};
+}
 
-// ============================================================================
-// STARTUP
-// ============================================================================
-
-const startApp = async () => {
+async function bootstrap(): Promise<void> {
   try {
     await initializePlatform();
-    renderApp();
-    console.log('Modulr app started successfully');
-  } catch (error) {
-    console.error('Failed to start app:', error);
-    
-    // Fallback render
+  } finally {
     renderApp();
   }
-};
+}
 
-// Start the application
-startApp();
+void bootstrap();
 
-// ============================================================================
-// EXPORTS FOR TESTING
-// ============================================================================
-
-export { initializePlatform, getPlatform };
+export { detectPlatform, initializePlatform };

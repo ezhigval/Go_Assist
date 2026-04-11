@@ -9,23 +9,23 @@
 
 export type Segment = 
   | 'personal'
-  | 'work'
   | 'family'
+  | 'work'
+  | 'business'
   | 'health'
-  | 'learning'
-  | 'finance'
-  | 'creative'
-  | 'social';
+  | 'travel'
+  | 'pets'
+  | 'assets';
 
 export const AllSegments: Segment[] = [
   'personal',
-  'work', 
   'family',
+  'work',
+  'business',
   'health',
-  'learning',
-  'finance',
-  'creative',
-  'social',
+  'travel',
+  'pets',
+  'assets',
 ];
 
 export interface Scope {
@@ -539,9 +539,9 @@ export interface SemanticColors {
   info: string;
 }
 
-export interface ScopeColors {
+export type ScopeColors = {
   [key in Segment]: string;
-}
+};
 
 export interface ThemeTypography {
   fontFamily: {

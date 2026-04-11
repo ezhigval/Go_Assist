@@ -22,9 +22,9 @@
 | ID | Правило |
 |----|---------|
 | A1 | Доменные модули на корневом `go.mod` (`module modulr`) используют `modulr/events` (шина, `Storage`, scope). |
-| A2 | Ядро оркестрации: `core/orchestrator`, `core/aiengine`, `core/events` — отдельный контур шины ядра; интеграция с `modulr/events` через адаптер (план). |
+| A2 | Ядро оркестрации: `core/orchestrator`, `core/aiengine`, `core/events` — отдельный контур шины ядра; интеграция с `modulr/events` идёт через `core/busbridge`. |
 | A3 | Реестр эндпоинтов в оркестраторе обязан знать все пары `(module, action)`, которые может выдать ИИ. |
-| A4 | Пакеты `organizer/`, `telegram/`, `databases/` — отдельные `go.mod`. **Техдолг:** во всех трёх смешаны `package main` и библиотечные пакеты / есть циклы → CI опирается на **`modulr` root** как эталон; подмодули — минимум **`gofmt`**. Исправление: вынести `cmd/*`, разорвать циклы (интерфейсы, `internal/` для типов шины). |
+| A4 | Пакеты `organizer/`, `telegram/`, `databases/` — отдельные `go.mod`. `telegram/` и `databases/` приведены к layout `cmd/<module>` + библиотечные пакеты и проходят `go test ./...`; **техдолг** по mixed layout остаётся только в `organizer/`. |
 
 ---
 
@@ -44,7 +44,7 @@
 
 | ID | Правило |
 |----|---------|
-| C1 | **`go vet` + `go build ./...`** — только для корневого модуля **`modulr`**. Подмодули `organizer/`, `telegram/`, `databases/` (смешение `main` и библиотеки в одном дереве) проходят **`gofmt`** через `scripts/modulr-check.sh`; полный `go build ./...` внутри них — вне обязательств до рефакторинга layout (§2 A4). |
+| C1 | **`go vet` + `go build ./...`** — только для корневого модуля **`modulr`**. Подмодули `telegram/` и `databases/` проходят **`go test ./...`** через `scripts/modulr-check.sh`; `organizer/` до рефакторинга layout (§2 A4) проходит минимум **`gofmt`**. |
 | C2 | Имена событий — строки `v1.module.action`; константы — в `events`/`core/events`. |
 | C3 | Комментарии к экспортируемым символам — на русском или английском единообразно в пакете (в проекте преобладает русский). |
 

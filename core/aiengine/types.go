@@ -19,6 +19,7 @@ type Decision struct {
 	Target     string         `json:"target"` // модуль: calendar, tracker, maps, finance, ...
 	Action     string         `json:"action"` // глагол: create_event, create_reminder, ...
 	Parameters map[string]any `json:"parameters,omitempty"`
+	ModelID    string         `json:"model_id,omitempty"`
 	Confidence float64        `json:"confidence"`
 	Scope      string         `json:"scope"`
 	CreatedAt  time.Time      `json:"created_at"`

@@ -3,8 +3,8 @@
  * Provides context-aware functionality for all components
  */
 
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import type { Scope, Segment, User, Context } from '@modulr/core-types';
+import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import type { Scope, Segment, User } from '@modulr/core-types';
 
 // ============================================================================
 // SCOPE STATE TYPES
@@ -174,13 +174,13 @@ function scopeReducer(state: ScopeState, action: ScopeAction): ScopeState {
 
 const scopeColors: Record<Segment, string> = {
   personal: '#10b981',
-  work: '#3b82f6',
   family: '#f59e0b',
+  work: '#3b82f6',
+  business: '#0ea5e9',
   health: '#ef4444',
-  learning: '#8b5cf6',
-  finance: '#06b6d4',
-  creative: '#ec4899',
-  social: '#84cc16',
+  travel: '#8b5cf6',
+  pets: '#f97316',
+  assets: '#64748b',
 };
 
 // ============================================================================
@@ -446,4 +446,3 @@ export function useScopeError(): string | null {
 // ============================================================================
 
 export { ScopeContext };
-export type { ScopeState, ScopeContextValue, ScopeAction };

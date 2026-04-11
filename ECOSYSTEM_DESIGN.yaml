@@ -1,0 +1,45 @@
+version: 1
+name: modulr
+
+principles:
+  - lego_architecture
+  - event_first
+  - scope_isolation
+  - ai_orchestrated
+
+scopes:
+  - personal
+  - family
+  - work
+  - business
+  - health
+  - travel
+  - pets
+  - assets
+
+layers:
+  - transport
+  - core
+  - domain_bus
+  - operations
+  - data
+
+core:
+  orchestrator: core/orchestrator
+  aiengine: core/aiengine
+  events: core/events
+
+operations:
+  - finance
+  - tracker
+  - knowledge
+  - metrics
+  - notifications
+  - media
+  - email
+  - organizer
+  - auth
+  - scheduler
+  - files
+
+event_naming: v1.{module}.{action}

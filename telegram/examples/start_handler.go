@@ -2,13 +2,15 @@ package examples
 
 import (
 	"context"
+	"telegram"
 	"telegram/handler"
 	"telegram/keyboard"
+	"telegram/state"
 )
 
 // RegisterStartHandler регистрирует обработчик /start
 // Этот файл демонстрирует, как подключать бизнес-логику к боту
-func RegisterStartHandler(api BotAPI) {
+func RegisterStartHandler(api telegram.BotAPI) {
 	api.RegisterCommand("start", handleStart)
 }
 
@@ -27,6 +29,6 @@ func handleStart(ctx context.Context, req *handler.Request) (*handler.Response, 
 		Text:      text,
 		ParseMode: "Markdown",
 		Keyboard:  kb,
-		NextState: handler.StateSession{}, // сброс состояния
+		NextState: state.Session{}, // сброс состояния
 	}, nil
 }

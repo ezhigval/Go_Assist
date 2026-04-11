@@ -8,6 +8,26 @@
 
 ---
 
+## [2026-04-11] v0.2: bus bridge и базовый тестовый контур
+
+- [2026-04-11] | `core/busbridge/bridge.go` | **Создан** двунаправленный адаптер между `modulr/events` и `modulr/core/events`; переносит `trace_id/chat_id/scope/tags`, поддерживает alias core→domain и защиту от циклов | §2 A2, §5 V2
+- [2026-04-11] | `core/events/bus.go` | Добавлен `SubscribeAll` для пассивных слушателей ядровой шины и bus bridge без ломки `EventBus` | §2 A2, §3 E2
+- [2026-04-11] | `events/bus_test.go`, `events/segment_test.go`, `core/busbridge/bridge_test.go`, `core/orchestrator/registry_test.go`, `core/orchestrator/pipeline_test.go` | **Добавлены** тесты для критичных пакетов v0.2: доменная шина, сегменты, bridge, registry/pipeline | §4 C1, §8
+- [2026-04-11] | `ARCHITECTURE.md`, `ROADMAP.md` | Документация синхронизирована с фактическим состоянием v0.2; EXC-001 закрыт, bridge описан в архитектуре | §7
+- [2026-04-11] | `scripts/modulr-check.sh` / корневой модуль | Локальная валидация: `env GOCACHE=/tmp/go-build-cache go test ./...` и `env GOCACHE=/tmp/go-build-cache ./scripts/modulr-check.sh` прошли успешно | §4 C1, §7
+- [2026-04-11] | `app/runtime.go`, `app/actions.go`, `app/runtime_test.go` | **Создан** runtime v0.3: transport-shaped ingress, orchestrator, bus bridge, доменные action handlers и E2E тест | §2 A2, §5 V3
+- [2026-04-11] | `core/aiengine/types.go`, `core/aiengine/engine.go`, `core/orchestrator/pipeline.go` | `model_id` теперь проходит через decision/dispatch/outcome, что делает feedback loop корректным | §5 V3
+- [2026-04-11] | `cmd/modulr/main.go`, `core/main.go`, `README.md`, `ROADMAP.md`, `ARCHITECTURE.md` | Quick-start и документация переведены на новый runtime message flow; отдельно зафиксировано, что прямой handoff из `telegram/` ещё не завершён | §7
+- [2026-04-11] | `telegram/go.mod`, `telegram/cmd/telegram/main.go`, `telegram/modulr_ingress.go`, `telegram/bot.go`, `telegram/handler/router.go` | `telegram/` подключён к root runtime через local `replace`, восстановлен transport response flow и вынесен `cmd/telegram` вместо mixed layout в корне подмодуля | §2 A4, §5 V1
+- [2026-04-11] | `telegram/handler/router_test.go`, `telegram/modulr_ingress_test.go`, `scripts/modulr-check.sh`, `PROJECT_RULES.md`, `README.md`, `ROADMAP.md` | Добавлены тесты и gate для `telegram/`; direct handoff из transport-слоя отмечен как выполненный шаг v0.3 | §4 C1, §7
+- [2026-04-11] | `databases/cmd/databases/main.go`, `databases/api.go`, `databases/repo.go`, `databases/config.go`, `databases/README.md` | `databases/` переведён на importable layout `cmd/databases`, исправлен контракт `pgx/v5` (`pgconn.CommandTag`), добавлены `DB_AUTO_MIGRATE` и README с миграциями/rollback | §2 A4, §3 E1, §5 V1
+- [2026-04-11] | `telegram/state/database.go`, `telegram/state/database_test.go`, `telegram/cmd/telegram/persistence.go`, `telegram/cmd/telegram/main.go`, `telegram/config.go`, `telegram/go.mod` | Добавлен PostgreSQL-backed `state.Store` для transport session и переключение `TELEGRAM_STATE_STORE=memory|postgres`; `telegram` теперь использует `databases.DatabaseAPI` через локальный bridge | §2 A4, §3 E5, §5 V1
+- [2026-04-11] | `scripts/modulr-check.sh`, `PROJECT_RULES.md`, `ROADMAP.md` | Gate обновлены под новый статус `databases/`: модуль проходит `go test ./...`, roadmap v0.3 синхронизирован с миграционным README и DB-backed session store | §4 C1, §7
+- [2026-04-11] | `databases/models.go`, `databases/repo.go`, `databases/migrations.go`, `databases/README.md`, `app/journal.go`, `app/runtime.go`, `app/runtime_test.go`, `telegram/cmd/telegram/persistence.go` | Реализован trace-связанный `event_journal`; `telegram` в PostgreSQL-режиме пишет входящие сообщения, outcome/fallback и timeout в журнал, а runtime подключает sink через интерфейс без прямой зависимости от `databases/` | §2 A4, §3 E5, §5 V1
+- [2026-04-11] | `databases/migrations.go`, `databases/migrations/*.sql`, `databases/cmd/databases/main.go`, `databases/migrations_test.go`, `databases/README.md`, `README.md`, `ROADMAP.md` | Bootstrap `schemaSQL` заменён на versioned SQL migrations runner: `schema_migrations`, checksum drift-check, advisory lock, CLI `up/down/status`, отдельный deployment step и обновлённая документация v0.3 | §3 E1, §4 C1, §7
+
+---
+
 ## [2026-04-10] Аудит: TODO, нормативка, автопроверка
 
 - [2026-04-10] | `core/orchestrator/orchestrator.go` (~стр. 275) | TODO переименован в формат `TODO(modulr-orchestrator): … Action: …` | §3 E4

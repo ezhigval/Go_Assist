@@ -35,6 +35,7 @@ type EventBus interface {
 type MemoryBus struct {
 	mu   sync.RWMutex
 	subs map[Name][]Handler
+	all  []Handler
 }
 
 // NewMemoryBus создаёт шину.
@@ -49,6 +50,7 @@ func (b *MemoryBus) Publish(ctx context.Context, e Event) error {
 	}
 	b.mu.RLock()
 	handlers := append([]Handler(nil), b.subs[e.Name]...)
+	handlers = append(handlers, b.all...)
 	b.mu.RUnlock()
 
 	go func() {
@@ -87,4 +89,14 @@ func (b *MemoryBus) Subscribe(n Name, h Handler) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.subs[n] = append(b.subs[n], h)
+}
+
+// SubscribeAll регистрирует пассивный слушатель всех событий шины.
+func (b *MemoryBus) SubscribeAll(h Handler) {
+	if h == nil {
+		return
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.all = append(b.all, h)
 }

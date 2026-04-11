@@ -3,7 +3,7 @@
  * Responsive design with platform-specific features
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { cn } from '@modulr/lib/utils';
 import { Button } from '../ui/Button';
 import { useScope } from '../../context/ScopeContext';
@@ -225,7 +225,7 @@ export function Header({
           }}
           className="text-sm font-medium border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1"
         >
-          {availableScopes.map((scope, index) => (
+          {availableScopes.map((scope) => (
             <option
               key={`${scope.segment}:${scope.tags.join(',')}`}
               value={`${scope.segment}:${scope.tags.join(',')}`}
@@ -400,20 +400,14 @@ export function Header({
 function getScopeColor(segment: string): string {
   const colors: Record<string, string> = {
     personal: '#10b981',
-    work: '#3b82f6',
     family: '#f59e0b',
+    work: '#3b82f6',
+    business: '#0ea5e9',
     health: '#ef4444',
-    learning: '#8b5cf6',
-    finance: '#06b6d4',
-    creative: '#ec4899',
-    social: '#84cc16',
+    travel: '#8b5cf6',
+    pets: '#f97316',
+    assets: '#64748b',
   };
   
   return colors[segment] || '#6b7280';
 }
-
-// ============================================================================
-// EXPORTS
-// ============================================================================
-
-export type { HeaderProps };

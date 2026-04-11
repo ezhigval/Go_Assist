@@ -55,7 +55,13 @@
 | **`modulr/events`** | Основная шина доменных модулей (`events.Bus`, `events.Event`, версии `v1.*`). |
 | **`modulr/core/events`** | Шина ядра оркестратора (`EventBus`, события вроде `v1.message.received`, `v1.orchestrator.action.dispatch`). |
 
-На этапе эволюции допустимы обе; дальше — **адаптер** mirror/dispatch между ними в одном процессе.
+В одном процессе их связывает **`core/busbridge`**:
+
+- domain → core: зеркалит доменные события в шину ядра, сохраняет `trace_id`, `chat_id`, `scope`, `tags`;
+- core → domain: зеркалит события ядра обратно в `modulr/events`, поддерживает alias-маршруты для несовпадающих имён;
+- защита от циклов: служебный маркер в `Context` не даёт событию бесконечно «пинг-понговать» между шинами.
+
+`core/events.MemoryBus` поддерживает `SubscribeAll` для пассивных наблюдателей и адаптера, не меняя основной контракт `EventBus`.
 
 ---
 
@@ -80,7 +86,7 @@
 ## 🗄️ Данные
 
 - **`events.Storage`** + **`MemoryStorage`** — универсальная JSON-персистентность для модулей без привязки к СУБД.  
-- **`databases/`** — PostgreSQL для прод-сценариев с Telegram/сессиями.  
+- **`databases/`** — PostgreSQL для прод-сценариев с Telegram/сессиями и trace-связанным event journal.  
 - Политики **RLS / tenant / scope** — на уровне хранилища и авторизации (развитие).
 
 ---
@@ -113,7 +119,8 @@
 
 | Пакет | Назначение |
 |-------|------------|
-| `telegram`, `databases`, `auth` | Вход, данные, сессии |
+| `app` | Runtime-сборка v0.3: входящее сообщение → core bus → orchestrator → bus bridge → доменные обработчики |
+| `telegram`, `databases`, `auth` | Вход, данные, сессии, event journal |
 | `organizer` | Календарь, todo, заметки, контакты |
 | `events`, `metrics`, `notifications`, `scheduler`, `files` | Инфраструктура и сквозные возможности |
 | `finance`, `tracker`, `knowledge`, `media`, `email` | Доменные операции |

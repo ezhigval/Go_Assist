@@ -96,10 +96,8 @@ func (e *Engine) Analyze(ctx context.Context, req Request) ([]Decision, error) {
 	// STUB: Real inference requires provider calls per ModelSpec with context timeout/cancellation, aggregating []Decision without raw text storage.
 	decs := e.stubInfer(ctx, req, models)
 	for i := range decs {
-		mid, _ := decs[i].Parameters["_model_id"].(string)
-		w := e.fb.Weight(mid)
+		w := e.fb.Weight(decs[i].ModelID)
 		decs[i].Confidence = clamp01(decs[i].Confidence * w)
-		delete(decs[i].Parameters, "_model_id")
 	}
 	return decs, nil
 }
@@ -130,7 +128,8 @@ func (e *Engine) stubInfer(ctx context.Context, req Request, models []ModelSpec)
 			ID:         newDecisionID(),
 			Target:     "calendar",
 			Action:     "create_event",
-			Parameters: map[string]any{"title": trimSnippet(req.Text, 80), "_model_id": primary},
+			Parameters: map[string]any{"title": trimSnippet(req.Text, 80)},
+			ModelID:    primary,
 			Confidence: 0.95,
 			Scope:      effectiveScope(req),
 			CreatedAt:  now,
@@ -141,7 +140,8 @@ func (e *Engine) stubInfer(ctx context.Context, req Request, models []ModelSpec)
 			ID:         newDecisionID(),
 			Target:     "tracker",
 			Action:     "create_reminder",
-			Parameters: map[string]any{"note": trimSnippet(req.Text, 120), "_model_id": primary},
+			Parameters: map[string]any{"note": trimSnippet(req.Text, 120)},
+			ModelID:    primary,
 			Confidence: 0.88,
 			Scope:      effectiveScope(req),
 			CreatedAt:  now,
@@ -152,7 +152,8 @@ func (e *Engine) stubInfer(ctx context.Context, req Request, models []ModelSpec)
 			ID:         newDecisionID(),
 			Target:     "maps",
 			Action:     "build_route",
-			Parameters: map[string]any{"query": trimSnippet(req.Text, 120), "_model_id": "route_planner"},
+			Parameters: map[string]any{"query": trimSnippet(req.Text, 120)},
+			ModelID:    "route_planner",
 			Confidence: 0.91,
 			Scope:      effectiveScope(req),
 			CreatedAt:  now,
@@ -163,7 +164,8 @@ func (e *Engine) stubInfer(ctx context.Context, req Request, models []ModelSpec)
 			ID:         newDecisionID(),
 			Target:     "knowledge",
 			Action:     "save_query",
-			Parameters: map[string]any{"text": trimSnippet(req.Text, 200), "_model_id": primary},
+			Parameters: map[string]any{"text": trimSnippet(req.Text, 200)},
+			ModelID:    primary,
 			Confidence: 0.55,
 			Scope:      effectiveScope(req),
 			CreatedAt:  now,
