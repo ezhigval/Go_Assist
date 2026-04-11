@@ -34,6 +34,7 @@
 go run ./cmd/databases up
 go run ./cmd/databases status
 go run ./cmd/databases rls-status
+go run ./cmd/databases app-role-sql -role=modulr_app
 go run ./cmd/databases down -steps=1
 go run ./cmd/databases journal -trace=<trace_id> -scope=personal
 ```
@@ -99,6 +100,12 @@ DB-enforced policy:
 - `go run ./cmd/databases rls-status` показывает, под каким DB role работает текущее соединение;
 - команда проверяет `rolsuper`, `rolbypassrls`, `relrowsecurity`, `relforcerowsecurity` и наличие policy `event_journal_scope_select` / `event_journal_scope_insert`;
 - `databases.Start()` теперь логирует тот же readiness snapshot и явно предупреждает, если приложение подключено под superuser или BYPASSRLS role.
+
+Bootstrap non-superuser app role:
+
+- `go run ./cmd/databases app-role-sql -role=modulr_app` печатает минимальный SQL bootstrap для application login role;
+- helper специально **не** применяет SQL автоматически: роль и grants должен подтвердить владелец БД / DBA;
+- после переключения `DB_USER`/`DB_PASS` проверь эффективный режим через `go run ./cmd/databases rls-status`.
 
 Минимальный запрос для replay одного trace:
 

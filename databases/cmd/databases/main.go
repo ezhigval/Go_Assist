@@ -29,6 +29,8 @@ func main() {
 		runStatus()
 	case "rls-status":
 		runRLSStatus()
+	case "app-role-sql":
+		runAppRoleSQL(args)
 	case "journal":
 		runJournal(args)
 	case "help", "-h", "--help":
@@ -221,6 +223,24 @@ func runRLSStatus() {
 	}
 }
 
+func runAppRoleSQL(args []string) {
+	flags := flag.NewFlagSet("app-role-sql", flag.ExitOnError)
+	role := flags.String("role", "modulr_app", "login role for application connections")
+	schema := flags.String("schema", "public", "target schema for grants/default privileges")
+	flags.Usage = func() {
+		fmt.Fprintln(flags.Output(), "Usage: go run ./cmd/databases app-role-sql [-role=modulr_app] [-schema=public]")
+		flags.PrintDefaults()
+	}
+	_ = flags.Parse(args)
+
+	cfg := databases.LoadConfig()
+	sql, err := databases.BuildAppRoleBootstrapSQL(*role, cfg.Name, *schema)
+	if err != nil {
+		log.Fatalf("❌ build app role SQL failed: %v", err)
+	}
+	fmt.Print(sql)
+}
+
 func mustInitDB(ctx context.Context, cfg databases.Config) *databases.DB {
 	db, err := databases.InitDB(ctx, cfg)
 	if err != nil {
@@ -247,6 +267,7 @@ Commands:
   down [-steps=N]    rollback the last N migrations
   status             print migration state
   rls-status         inspect effective event_journal RLS state for current DB role
+  app-role-sql       print bootstrap SQL for a non-superuser application role
   journal            print scope-aware event_journal entries by trace_id or chat_id
   serve              connect, optionally auto-migrate, and wait for shutdown
   help               print this help
