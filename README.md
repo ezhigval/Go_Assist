@@ -110,7 +110,7 @@ Data Layer (PostgreSQL | Redis | Vector DB | Local Storage)
 
 **Особенности:**
 - Контекстная навигация: переключай сферы жизни в один клик
-- `Control Plane`: broker lanes, plugin registry и scope presets уже конфигурируются в web-слое без правки кода
+- `Control Plane`: broker lanes, plugin registry и scope presets уже конфигурируются в web-слое без правки кода; при необходимости web/PWA может работать против отдельного Go-backed operator API (`cmd/controlplane`)
 - Визуализация связей: карточки показывают связанные сущности
 - Офлайн-первый: кэширование, синхронизация при появлении сети
 - Модульный UI: компоненты = бэкенд-модули, переиспользование 90%+
@@ -191,6 +191,14 @@ cd frontend
 npm install
 npm run dev:telegram
 # Открой бота в Telegram -> нажми "Запустить веб-приложение"
+```
+
+Опционально для web/PWA operator flow с реальным backend projection:
+
+```bash
+go run ./cmd/controlplane
+# Поднимает /api/health, /api/scopes, /api/control-plane на :8080
+# frontend по умолчанию ходит в этот адрес через VITE_API_BASE_URL=http://localhost:8080/api
 ```
 
 ### 5. Запуск Telegram transport

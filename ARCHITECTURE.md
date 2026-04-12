@@ -120,6 +120,7 @@
 - Вертикально: пулы БД, кэш.  
 - Горизонтально: вынести шину в broker contract (`core/distributed`) и раскладывать обработку по consumer groups / stateless-воркерам.  
 - Расширяемость: versioned plugin manifests (`plugins/`) описывают runtime `process|wasm`, entrypoint, protocol и capability map до фактической загрузки sandbox/process runner; registry уже режет absolute entry paths, неизвестные permissions и небезопасные runtime/protocol комбинации.
+- Operator API: `controlplane/` проецирует broker/module/plugin/scope snapshot в отдельный HTTP surface (`cmd/controlplane`) с маршрутами `/api/health`, `/api/scopes`, `/api/control-plane`, не меняя frontend-контракт и не ломая local fallback path.
 - Продуктово: **настройка scope/тегов в UI** «в пару кликов» через web control plane без смены кода модулей.
 
 ---
@@ -132,6 +133,7 @@
 | `telegram`, `databases`, `auth` | Вход, данные, сессии, event journal |
 | `core/distributed` | Foundation-контракт для broker-backed event lanes и consumer groups в v2.0 |
 | `plugins` | Versioned plugin manifests и capability registry для process/WASM expansion path |
+| `controlplane` | Go-backed operator projection для broker/module/plugin/scope snapshot и mutating HTTP actions |
 | `organizer` | Календарь, todo, заметки, контакты |
 | `events`, `metrics`, `notifications`, `scheduler`, `files` | Инфраструктура и сквозные возможности |
 | `finance`, `tracker`, `knowledge`, `media`, `email` | Доменные операции |

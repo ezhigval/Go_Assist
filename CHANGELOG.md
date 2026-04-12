@@ -8,6 +8,12 @@
 
 ---
 
+## [2026-04-13] v2.0: control plane backend projection
+
+- [2026-04-13] | `controlplane/models.go`, `controlplane/service.go`, `controlplane/http.go`, `controlplane/*_test.go`, `cmd/controlplane/main.go`, `frontend/README.md`, `README.md`, `ARCHITECTURE.md`, `ROADMAP.md` | `Control plane` выведен из purely-local snapshot режима в Go-backed HTTP projection: отдельный `cmd/controlplane` отдаёт `/api/health`, `/api/scopes`, `/api/control-plane`, поддерживает mutating actions для broker/module/plugin и сохраняет совместимость с frontend local fallback; stage провалидирован unit/http тестами и живым smoke через `go run ./cmd/controlplane` + `curl` | §2 A2, §4 C1, §5 V1, §7
+
+---
+
 ## [2026-04-12] v2.0: web control plane UX criteria
 
 - [2026-04-12] | `frontend/src/modules/control-plane/ControlPlaneDashboard.tsx`, `frontend/src/context/ScopeContext.tsx`, `frontend/src/lib/api.ts`, `frontend/src/test/control-plane.spec.tsx`, `frontend/README.md`, `ROADMAP.md` | Для web control plane зафиксирован и доведён до рабочего состояния минимальный UX contract: first-screen status summary гидратируется из локального snapshot без ожидания backend, mutating actions имеют явные имена, live feedback идёт через event trace, operator flow покрыт тестами; validation-пункт v2.0 по UX закрыт | §4 C1, §5 V1, §7

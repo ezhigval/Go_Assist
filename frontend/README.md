@@ -56,6 +56,7 @@ Modulr Frontend is a comprehensive React-based application that runs on multiple
 - Node.js 18+
 - npm 9+
 - Git
+- Go 1.21+ (если хочешь поднять реальный control-plane backend вместо local fallback)
 
 ### Installation
 
@@ -110,6 +111,25 @@ npm run lint
 # Format code
 npm run format
 ```
+
+### Real Control Plane Backend
+
+По умолчанию web/PWA слой остаётся операбельным через local snapshot fallback, но для реального operator API можно параллельно запустить Go-projection:
+
+```bash
+cd ..
+go run ./cmd/controlplane
+```
+
+Сервис поднимает:
+- `GET /api/health`
+- `GET/POST/PATCH/DELETE /api/scopes`
+- `GET /api/control-plane`
+- `PATCH /api/control-plane/modules/:id`
+- `PATCH /api/control-plane/plugins/:id`
+- `POST /api/control-plane/brokers/:id/cycle`
+
+Дефолтный `VITE_API_BASE_URL` уже указывает на `http://localhost:8080/api`, поэтому фронтенд начнёт использовать этот backend автоматически, а при недоступности сервиса останется на local fallback.
 
 ## Platform-Specific Development
 
