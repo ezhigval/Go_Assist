@@ -1,8 +1,12 @@
 package controlplane
 
 import (
+	_ "embed"
+	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"modulr/events"
@@ -153,6 +157,15 @@ type PluginPatch struct {
 	Capabilities *[]PluginCapability `json:"capabilities,omitempty"`
 }
 
+var (
+	//go:embed default_snapshot.json
+	defaultSnapshotRaw []byte
+
+	defaultSnapshotSeedOnce sync.Once
+	defaultSnapshotSeed     Snapshot
+	defaultSnapshotSeedErr  error
+)
+
 func (m BrokerMode) valid() bool {
 	switch m {
 	case BrokerModeMemory, BrokerModeNATS, BrokerModeKafka:
@@ -235,129 +248,83 @@ func normalizeTags(tags []string) []string {
 }
 
 func defaultSnapshot() Snapshot {
-	return Snapshot{
-		UpdatedAt:  time.Now().UTC().Format(time.RFC3339),
-		Scopes:     defaultScopes(),
-		TagPresets: []string{"ops", "focus", "handoff", "priority", "audit", "automation"},
-		Brokers: []BrokerLane{
-			{
-				ID:     "runtime-core",
-				Title:  "Runtime Core Bus",
-				Topic:  "runtime.events",
-				Mode:   BrokerModeMemory,
-				Status: BrokerStatusReady,
-				Notes:  "Single-process baseline for orchestrator + metrics + transport responses.",
-				ConsumerGroups: []BrokerConsumerGroup{
-					{ID: "orchestrator", Consumers: 2, Lag: 0, AckPolicy: AckPolicyAtLeastOnce},
-					{ID: "metrics", Consumers: 1, Lag: 0, AckPolicy: AckPolicyAtLeastOnce},
-				},
-			},
-			{
-				ID:     "plugin-fanout",
-				Title:  "Plugin Fanout Lane",
-				Topic:  "plugins.dispatch",
-				Mode:   BrokerModeNATS,
-				Status: BrokerStatusPlanned,
-				Notes:  "Reserved lane for v2 plugin workloads and backpressure separation.",
-				ConsumerGroups: []BrokerConsumerGroup{
-					{ID: "plugin-workers", Consumers: 3, Lag: 4, AckPolicy: AckPolicyAtLeastOnce},
-				},
-			},
-		},
-		Modules: []ModuleControl{
-			{
-				ID:              "tracker",
-				Title:           "Tracker",
-				Description:     "Напоминания, планы и milestone flow для scoped productivity.",
-				Enabled:         true,
-				DispatchMode:    ModuleDispatchQueued,
-				ConsumerGroup:   "tracker-workers",
-				AllowedScopes:   []string{"personal", "work", "business"},
-				Tags:            []string{"reminders", "milestones"},
-				LatencyBudgetMS: 250,
-			},
-			{
-				ID:              "finance",
-				Title:           "Finance",
-				Description:     "Транзакции и журнал расходов с отдельной очередью для business scope.",
-				Enabled:         true,
-				DispatchMode:    ModuleDispatchFanout,
-				ConsumerGroup:   "finance-ledger",
-				AllowedScopes:   []string{"personal", "business", "assets"},
-				Tags:            []string{"ledger", "vat", "budget"},
-				LatencyBudgetMS: 180,
-			},
-			{
-				ID:              "knowledge",
-				Title:           "Knowledge",
-				Description:     "Ноты и query capture с мягким fallback в локальное хранилище.",
-				Enabled:         true,
-				DispatchMode:    ModuleDispatchInline,
-				ConsumerGroup:   "knowledge-cache",
-				AllowedScopes:   []string{"personal", "work", "travel"},
-				Tags:            []string{"notes", "search"},
-				LatencyBudgetMS: 120,
-			},
-			{
-				ID:              "notifications",
-				Title:           "Notifications",
-				Description:     "Delivery path для outcome/fallback и cross-platform уведомлений.",
-				Enabled:         false,
-				DispatchMode:    ModuleDispatchFanout,
-				ConsumerGroup:   "notify-broadcast",
-				AllowedScopes:   []string{"personal", "family", "work", "business"},
-				Tags:            []string{"push", "transport"},
-				LatencyBudgetMS: 90,
-			},
-		},
-		Plugins: []PluginControl{
-			{
-				ID:          "finance-sync",
-				Version:     "1.0.0",
-				Runtime:     PluginRuntimeProcess,
-				Protocol:    PluginProtocolGRPC,
-				Status:      PluginStatusEnabled,
-				Entry:       "plugins/finance-sync/bin/finance-sync",
-				Description: "External ledger adapter for business finance dispatch.",
-				Capabilities: []PluginCapability{
-					{Module: "finance", Actions: []string{"create_transaction", "sync"}, Scopes: []string{"business", "work"}},
-				},
-			},
-			{
-				ID:          "tracker-plan",
-				Version:     "1.1.0",
-				Runtime:     PluginRuntimeWASM,
-				Protocol:    PluginProtocolStdio,
-				Status:      PluginStatusStaged,
-				Entry:       "plugins/tracker-plan/tracker-plan.wasm",
-				Description: "Planned sandbox plugin for decomposition and milestone shaping.",
-				Capabilities: []PluginCapability{
-					{Module: "tracker", Actions: []string{"create_task", "create_reminder"}, Scopes: []string{"personal", "work"}},
-				},
-			},
-			{
-				ID:          "audit-mirror",
-				Version:     "0.9.0",
-				Runtime:     PluginRuntimeProcess,
-				Protocol:    PluginProtocolStdio,
-				Status:      PluginStatusDisabled,
-				Entry:       "plugins/audit-mirror/bin/audit-mirror",
-				Description: "Mirror consumer for regulated audit trails before broker rollout.",
-				Capabilities: []PluginCapability{
-					{Module: "knowledge", Actions: []string{"save_note"}, Scopes: []string{"business"}},
-				},
-			},
-		},
-	}
+	snapshot := cloneSnapshot(mustDefaultSnapshotSeed())
+	snapshot.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	return snapshot
 }
 
-func defaultScopes() []ScopePreset {
-	return []ScopePreset{
-		{Segment: string(events.SegmentPersonal), Tags: nil, Metadata: map[string]any{}},
-		{Segment: string(events.SegmentFamily), Tags: nil, Metadata: map[string]any{}},
-		{Segment: string(events.SegmentWork), Tags: nil, Metadata: map[string]any{}},
-		{Segment: string(events.SegmentBusiness), Tags: nil, Metadata: map[string]any{}},
-		{Segment: string(events.SegmentBusiness), Tags: []string{"ops"}, Metadata: map[string]any{"source": "v2-control-plane"}},
-		{Segment: string(events.SegmentTravel), Tags: []string{"handoff"}, Metadata: map[string]any{"source": "v2-control-plane"}},
+func mustDefaultSnapshotSeed() Snapshot {
+	defaultSnapshotSeedOnce.Do(func() {
+		defaultSnapshotSeed, defaultSnapshotSeedErr = loadDefaultSnapshotSeed()
+	})
+	if defaultSnapshotSeedErr != nil {
+		panic(defaultSnapshotSeedErr)
 	}
+	return cloneSnapshot(defaultSnapshotSeed)
+}
+
+func loadDefaultSnapshotSeed() (Snapshot, error) {
+	var snapshot Snapshot
+	if err := json.Unmarshal(defaultSnapshotRaw, &snapshot); err != nil {
+		return Snapshot{}, fmt.Errorf("controlplane: decode default snapshot seed: %w", err)
+	}
+	if err := normalizeSnapshotSeed(&snapshot); err != nil {
+		return Snapshot{}, err
+	}
+	return snapshot, nil
+}
+
+func normalizeSnapshotSeed(snapshot *Snapshot) error {
+	normalizedScopes := make([]ScopePreset, 0, len(snapshot.Scopes))
+	for _, scope := range snapshot.Scopes {
+		normalized, err := normalizeScope(scope)
+		if err != nil {
+			return err
+		}
+		normalizedScopes = append(normalizedScopes, normalized)
+	}
+	snapshot.Scopes = normalizedScopes
+	snapshot.TagPresets = normalizeTags(snapshot.TagPresets)
+
+	for i, broker := range snapshot.Brokers {
+		if broker.ID == "" || broker.Topic == "" {
+			return fmt.Errorf("controlplane: broker seed requires id/topic")
+		}
+		if !broker.Mode.valid() {
+			return fmt.Errorf("controlplane: invalid broker mode %q", broker.Mode)
+		}
+		if !broker.Status.valid() {
+			return fmt.Errorf("controlplane: invalid broker status %q", broker.Status)
+		}
+		snapshot.Brokers[i].ConsumerGroups = cloneConsumerGroups(broker.ConsumerGroups)
+	}
+
+	for i, module := range snapshot.Modules {
+		if module.ID == "" {
+			return fmt.Errorf("controlplane: module seed requires id")
+		}
+		if !module.DispatchMode.valid() {
+			return fmt.Errorf("controlplane: invalid module dispatch mode %q", module.DispatchMode)
+		}
+		if !validScopeList(module.AllowedScopes) {
+			return ErrInvalidScope
+		}
+		snapshot.Modules[i].AllowedScopes = cloneStrings(module.AllowedScopes)
+		snapshot.Modules[i].Tags = normalizeTags(module.Tags)
+	}
+
+	for i, plugin := range snapshot.Plugins {
+		if plugin.ID == "" {
+			return fmt.Errorf("controlplane: plugin seed requires id")
+		}
+		if !plugin.Status.valid() {
+			return fmt.Errorf("controlplane: invalid plugin status %q", plugin.Status)
+		}
+		if !validCapabilities(plugin.Capabilities) {
+			return ErrInvalidScope
+		}
+		snapshot.Plugins[i].Capabilities = cloneCapabilities(plugin.Capabilities)
+	}
+
+	return nil
 }

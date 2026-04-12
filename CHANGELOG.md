@@ -14,6 +14,12 @@
 
 ---
 
+## [2026-04-13] v2.0: shared control plane seed
+
+- [2026-04-13] | `controlplane/default_snapshot.json`, `controlplane/models.go`, `controlplane/default_snapshot_test.go`, `frontend/src/lib/api.ts`, `frontend/tsconfig.json`, `frontend/vite.config.ts`, `README.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `frontend/README.md` | Backend projection и frontend local fallback переведены на единый JSON seed для control plane snapshot; это убирает ручную двойную правку broker/module/plugin/scope дефолтов и закрепляет один source of truth для operator API | §2 A2, §4 C1, §5 V1, §7
+
+---
+
 ## [2026-04-12] v2.0: web control plane UX criteria
 
 - [2026-04-12] | `frontend/src/modules/control-plane/ControlPlaneDashboard.tsx`, `frontend/src/context/ScopeContext.tsx`, `frontend/src/lib/api.ts`, `frontend/src/test/control-plane.spec.tsx`, `frontend/README.md`, `ROADMAP.md` | Для web control plane зафиксирован и доведён до рабочего состояния минимальный UX contract: first-screen status summary гидратируется из локального snapshot без ожидания backend, mutating actions имеют явные имена, live feedback идёт через event trace, operator flow покрыт тестами; validation-пункт v2.0 по UX закрыт | §4 C1, §5 V1, §7

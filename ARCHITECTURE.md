@@ -120,7 +120,7 @@
 - Вертикально: пулы БД, кэш.  
 - Горизонтально: вынести шину в broker contract (`core/distributed`) и раскладывать обработку по consumer groups / stateless-воркерам.  
 - Расширяемость: versioned plugin manifests (`plugins/`) описывают runtime `process|wasm`, entrypoint, protocol и capability map до фактической загрузки sandbox/process runner; registry уже режет absolute entry paths, неизвестные permissions и небезопасные runtime/protocol комбинации.
-- Operator API: `controlplane/` проецирует broker/module/plugin/scope snapshot в отдельный HTTP surface (`cmd/controlplane`) с маршрутами `/api/health`, `/api/scopes`, `/api/control-plane`, не меняя frontend-контракт и не ломая local fallback path.
+- Operator API: `controlplane/` проецирует broker/module/plugin/scope snapshot в отдельный HTTP surface (`cmd/controlplane`) с маршрутами `/api/health`, `/api/scopes`, `/api/control-plane`, не меняя frontend-контракт и не ломая local fallback path. Дефолтный snapshot вынесен в общий `controlplane/default_snapshot.json`, чтобы backend и frontend использовали один baseline.
 - Продуктово: **настройка scope/тегов в UI** «в пару кликов» через web control plane без смены кода модулей.
 
 ---

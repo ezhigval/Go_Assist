@@ -18,6 +18,7 @@ Modulr Frontend is a comprehensive React-based application that runs on multiple
 - module dispatch matrix для admission / queue mode;
 - plugin registry для `process|wasm` manifests;
 - scope presets и quick tags с local persistence fallback;
+- единый seed-артефакт `../controlplane/default_snapshot.json` для web fallback и Go-backed operator API;
 - `npm run verify` покрывает type-check, vitest и production build.
 
 ## Минимальные UX-критерии Web Control Plane
@@ -129,7 +130,7 @@ go run ./cmd/controlplane
 - `PATCH /api/control-plane/plugins/:id`
 - `POST /api/control-plane/brokers/:id/cycle`
 
-Дефолтный `VITE_API_BASE_URL` уже указывает на `http://localhost:8080/api`, поэтому фронтенд начнёт использовать этот backend автоматически, а при недоступности сервиса останется на local fallback.
+Дефолтный `VITE_API_BASE_URL` уже указывает на `http://localhost:8080/api`, поэтому фронтенд начнёт использовать этот backend автоматически, а при недоступности сервиса останется на local fallback. Обе стороны стартуют из одного `controlplane/default_snapshot.json`, так что operator-данные не расходятся между fallback и реальным backend.
 
 ## Platform-Specific Development
 

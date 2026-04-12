@@ -63,6 +63,9 @@ export default defineConfig(({ mode }) => {
       __DESKTOP__: JSON.stringify(platform === 'desktop'),
     },
     server: {
+      fs: {
+        allow: [resolve(__dirname, '..')],
+      },
       port: 3000,
       host: true,
       proxy: {

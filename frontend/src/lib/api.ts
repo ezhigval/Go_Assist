@@ -1,4 +1,5 @@
 import type { Scope, Segment } from '@modulr/core-types';
+import defaultControlPlaneSeedRaw from '../../../controlplane/default_snapshot.json';
 import type {
   BrokerLane,
   BrokerMode,
@@ -10,6 +11,7 @@ import type {
 
 const API_BASE_URL = import.meta.env['VITE_API_BASE_URL'] || 'http://localhost:8080/api';
 const CONTROL_PLANE_STORAGE_KEY = 'modulr-control-plane-v2';
+type ControlPlaneSeed = Omit<ControlPlaneSnapshot, 'updatedAt'>;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -31,14 +33,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-const defaultScopes: Scope[] = [
-  { segment: 'personal', tags: [], metadata: {} },
-  { segment: 'family', tags: [], metadata: {} },
-  { segment: 'work', tags: [], metadata: {} },
-  { segment: 'business', tags: [], metadata: {} },
-  { segment: 'business', tags: ['ops'], metadata: { source: 'v2-control-plane' } },
-  { segment: 'travel', tags: ['handoff'], metadata: { source: 'v2-control-plane' } },
-];
+const defaultControlPlaneSeed = clone(defaultControlPlaneSeedRaw as ControlPlaneSeed);
+const defaultScopes: Scope[] = clone(defaultControlPlaneSeed.scopes);
 
 let memorySnapshot = buildDefaultControlPlane();
 
@@ -48,118 +44,8 @@ export function scopeKey(scope: Pick<Scope, 'segment' | 'tags'>): string {
 
 function buildDefaultControlPlane(): ControlPlaneSnapshot {
   return {
+    ...clone(defaultControlPlaneSeed),
     updatedAt: new Date().toISOString(),
-    scopes: clone(defaultScopes),
-    tagPresets: ['ops', 'focus', 'handoff', 'priority', 'audit', 'automation'],
-    brokers: [
-      {
-        id: 'runtime-core',
-        title: 'Runtime Core Bus',
-        topic: 'runtime.events',
-        mode: 'memory',
-        status: 'ready',
-        notes: 'Single-process baseline for orchestrator + metrics + transport responses.',
-        consumerGroups: [
-          { id: 'orchestrator', consumers: 2, lag: 0, ackPolicy: 'at_least_once' },
-          { id: 'metrics', consumers: 1, lag: 0, ackPolicy: 'at_least_once' },
-        ],
-      },
-      {
-        id: 'plugin-fanout',
-        title: 'Plugin Fanout Lane',
-        topic: 'plugins.dispatch',
-        mode: 'nats',
-        status: 'planned',
-        notes: 'Reserved lane for v2 plugin workloads and backpressure separation.',
-        consumerGroups: [
-          { id: 'plugin-workers', consumers: 3, lag: 4, ackPolicy: 'at_least_once' },
-        ],
-      },
-    ],
-    modules: [
-      {
-        id: 'tracker',
-        title: 'Tracker',
-        description: 'Напоминания, планы и milestone flow для scoped productivity.',
-        enabled: true,
-        dispatchMode: 'queued',
-        consumerGroup: 'tracker-workers',
-        allowedScopes: ['personal', 'work', 'business'],
-        tags: ['reminders', 'milestones'],
-        latencyBudgetMs: 250,
-      },
-      {
-        id: 'finance',
-        title: 'Finance',
-        description: 'Транзакции и журнал расходов с отдельной очередью для business scope.',
-        enabled: true,
-        dispatchMode: 'fanout',
-        consumerGroup: 'finance-ledger',
-        allowedScopes: ['personal', 'business', 'assets'],
-        tags: ['ledger', 'vat', 'budget'],
-        latencyBudgetMs: 180,
-      },
-      {
-        id: 'knowledge',
-        title: 'Knowledge',
-        description: 'Ноты и query capture с мягким fallback в локальное хранилище.',
-        enabled: true,
-        dispatchMode: 'inline',
-        consumerGroup: 'knowledge-cache',
-        allowedScopes: ['personal', 'work', 'travel'],
-        tags: ['notes', 'search'],
-        latencyBudgetMs: 120,
-      },
-      {
-        id: 'notifications',
-        title: 'Notifications',
-        description: 'Delivery path для outcome/fallback и cross-platform уведомлений.',
-        enabled: false,
-        dispatchMode: 'fanout',
-        consumerGroup: 'notify-broadcast',
-        allowedScopes: ['personal', 'family', 'work', 'business'],
-        tags: ['push', 'transport'],
-        latencyBudgetMs: 90,
-      },
-    ],
-    plugins: [
-      {
-        id: 'finance-sync',
-        version: '1.0.0',
-        runtime: 'process',
-        protocol: 'grpc',
-        status: 'enabled',
-        entry: 'plugins/finance-sync/bin/finance-sync',
-        description: 'External ledger adapter for business finance dispatch.',
-        capabilities: [
-          { module: 'finance', actions: ['create_transaction', 'sync'], scopes: ['business', 'work'] },
-        ],
-      },
-      {
-        id: 'tracker-plan',
-        version: '1.1.0',
-        runtime: 'wasm',
-        protocol: 'stdio',
-        status: 'staged',
-        entry: 'plugins/tracker-plan/tracker-plan.wasm',
-        description: 'Planned sandbox plugin for decomposition and milestone shaping.',
-        capabilities: [
-          { module: 'tracker', actions: ['create_task', 'create_reminder'], scopes: ['personal', 'work'] },
-        ],
-      },
-      {
-        id: 'audit-mirror',
-        version: '0.9.0',
-        runtime: 'process',
-        protocol: 'stdio',
-        status: 'disabled',
-        entry: 'plugins/audit-mirror/bin/audit-mirror',
-        description: 'Mirror consumer for regulated audit trails before broker rollout.',
-        capabilities: [
-          { module: 'knowledge', actions: ['save_note'], scopes: ['business'] },
-        ],
-      },
-    ],
   };
 }
 

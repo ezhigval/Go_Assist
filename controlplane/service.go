@@ -257,7 +257,11 @@ func normalizeScope(scope ScopePreset) (ScopePreset, error) {
 		return ScopePreset{}, ErrInvalidScope
 	}
 	scope.Tags = normalizeTags(scope.Tags)
+	hadMetadata := scope.Metadata != nil
 	scope.Metadata = cloneAnyMap(scope.Metadata)
+	if scope.Metadata == nil && hadMetadata {
+		scope.Metadata = map[string]any{}
+	}
 	if scope.Metadata == nil {
 		scope.Metadata = map[string]any{"source": "v2-control-plane"}
 	}
