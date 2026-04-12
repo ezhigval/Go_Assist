@@ -29,7 +29,7 @@ func main() {
 	case "status":
 		runStatus()
 	case "rls-status":
-		runRLSStatus()
+		runRLSStatus(args)
 	case "app-role-sql":
 		runAppRoleSQL(args)
 	case "stats":
@@ -198,7 +198,15 @@ func runJournal(args []string) {
 	}
 }
 
-func runRLSStatus() {
+func runRLSStatus(args []string) {
+	flags := flag.NewFlagSet("rls-status", flag.ExitOnError)
+	requireEffective := flags.Bool("require-effective", false, "exit with non-zero code when storage RLS is not effective")
+	flags.Usage = func() {
+		fmt.Fprintln(flags.Output(), "Usage: go run ./cmd/databases rls-status [-require-effective]")
+		flags.PrintDefaults()
+	}
+	_ = flags.Parse(args)
+
 	cfg := databases.LoadConfig()
 	cfg.AutoMigrate = false
 
@@ -223,6 +231,9 @@ func runRLSStatus() {
 	printTableRLSStatus(status.AuthSessions, status.RoleSuperuser, status.RoleBypassRLS)
 	for _, warning := range status.Warnings() {
 		fmt.Printf("warning=%s\n", warning)
+	}
+	if err := databases.EnforceStorageRLS(status, *requireEffective); err != nil {
+		log.Fatalf("❌ %v", err)
 	}
 }
 

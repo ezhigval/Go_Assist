@@ -51,6 +51,9 @@ func (db *DB) Start(ctx context.Context) error {
 	status, err := db.InspectStorageRLS(ctx)
 	if err != nil {
 		log.Printf("⚠️ storage RLS inspection failed: %v", err)
+		if db.cfg.RequireEffectiveRLS {
+			return fmt.Errorf("inspect storage RLS: %w", err)
+		}
 		return nil
 	}
 	log.Printf(
@@ -66,6 +69,9 @@ func (db *DB) Start(ctx context.Context) error {
 	)
 	for _, warning := range status.Warnings() {
 		log.Printf("⚠️ storage RLS: %s", warning)
+	}
+	if err := EnforceStorageRLS(status, db.cfg.RequireEffectiveRLS); err != nil {
+		return err
 	}
 	return nil
 }

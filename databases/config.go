@@ -4,29 +4,31 @@ import "os"
 
 // Config хранит параметры подключения к PostgreSQL
 type Config struct {
-	Host        string
-	Port        string
-	Name        string
-	User        string
-	Pass        string
-	SSLMode     string
-	AutoMigrate bool
-	MaxConns    int32
-	MinConns    int32
+	Host                string
+	Port                string
+	Name                string
+	User                string
+	Pass                string
+	SSLMode             string
+	AutoMigrate         bool
+	RequireEffectiveRLS bool
+	MaxConns            int32
+	MinConns            int32
 }
 
 // LoadConfig загружает настройки из переменных окружения с безопасными дефолтами
 func LoadConfig() Config {
 	return Config{
-		Host:        getEnv("DB_HOST", "localhost"),
-		Port:        getEnv("DB_PORT", "5432"),
-		Name:        getEnv("DB_NAME", "telegram_bot"),
-		User:        getEnv("DB_USER", "postgres"),
-		Pass:        getEnv("DB_PASS", ""),
-		SSLMode:     getEnv("DB_SSLMODE", "disable"),
-		AutoMigrate: getEnvBool("DB_AUTO_MIGRATE", true),
-		MaxConns:    20,
-		MinConns:    5,
+		Host:                getEnv("DB_HOST", "localhost"),
+		Port:                getEnv("DB_PORT", "5432"),
+		Name:                getEnv("DB_NAME", "telegram_bot"),
+		User:                getEnv("DB_USER", "postgres"),
+		Pass:                getEnv("DB_PASS", ""),
+		SSLMode:             getEnv("DB_SSLMODE", "disable"),
+		AutoMigrate:         getEnvBool("DB_AUTO_MIGRATE", true),
+		RequireEffectiveRLS: getEnvBool("DB_REQUIRE_RLS_EFFECTIVE", false),
+		MaxConns:            20,
+		MinConns:            5,
 	}
 }
 

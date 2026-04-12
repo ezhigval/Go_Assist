@@ -8,3 +8,4 @@ database:
   user: postgres
   password: ""
   sslmode: disable
+  require_effective_rls: false

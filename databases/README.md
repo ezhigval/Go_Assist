@@ -37,6 +37,7 @@
 go run ./cmd/databases up
 go run ./cmd/databases status
 go run ./cmd/databases rls-status
+go run ./cmd/databases rls-status -require-effective
 go run ./cmd/databases app-role-sql -role=modulr_app
 go run ./cmd/databases stats -scope=personal
 go run ./cmd/databases down -steps=1
@@ -102,14 +103,16 @@ DB-enforced policy:
 Диагностика готовности:
 
 - `go run ./cmd/databases rls-status` показывает, под каким DB role работает текущее соединение;
+- `go run ./cmd/databases rls-status -require-effective` удобно для CI/deploy preflight и завершится с non-zero exit code, если текущая роль не даёт реального RLS enforcement;
 - команда проверяет `rolsuper`, `rolbypassrls`, `relrowsecurity`, `relforcerowsecurity` и наличие policy для `event_journal`, `stats`, `sessions`, `auth_sessions`;
-- `databases.Start()` теперь логирует тот же readiness snapshot и явно предупреждает, если приложение подключено под superuser или BYPASSRLS role, либо одна из scope-bound таблиц не защищена policy.
+- `databases.Start()` теперь логирует тот же readiness snapshot и явно предупреждает, если приложение подключено под superuser или BYPASSRLS role, либо одна из scope-bound таблиц не защищена policy;
+- при `DB_REQUIRE_RLS_EFFECTIVE=true` startup завершится ошибкой, если storage RLS неэффективен для текущего DB role.
 
 Bootstrap non-superuser app role:
 
 - `go run ./cmd/databases app-role-sql -role=modulr_app` печатает минимальный SQL bootstrap для application login role;
 - helper специально **не** применяет SQL автоматически: роль и grants должен подтвердить владелец БД / DBA;
-- после переключения `DB_USER`/`DB_PASS` проверь эффективный режим через `go run ./cmd/databases rls-status`.
+- после переключения `DB_USER`/`DB_PASS` включи `DB_REQUIRE_RLS_EFFECTIVE=true` и проверь эффективный режим через `go run ./cmd/databases rls-status -require-effective`.
 
 Sessions/Auth storage authorization:
 

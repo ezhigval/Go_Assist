@@ -145,6 +145,7 @@ cp config/config.example.yaml config/config.yaml
 # DB_USER=postgres              # локальный quick start
 # DB_PASS=
 # DB_SSLMODE=disable
+# DB_REQUIRE_RLS_EFFECTIVE=false  # staging/production: true после перехода на app role
 # AI_PROVIDER=local   # или оставь unset/"stub" для детерминированного fallback
 # AI_PROVIDER_BASE_URL=http://127.0.0.1:8000
 # AI_ALLOW_STUB_FALLBACK=true
@@ -152,7 +153,8 @@ cp config/config.example.yaml config/config.yaml
 # Для RLS-effective transport/databases setup:
 # go run ./databases/cmd/databases app-role-sql -role=modulr_app
 # Выполни SQL под DBA/owner role, затем переключи DB_USER/DB_PASS
-# и проверь go run ./databases/cmd/databases rls-status
+# затем включи DB_REQUIRE_RLS_EFFECTIVE=true
+# и проверь go run ./databases/cmd/databases rls-status -require-effective
 # Команда покажет readiness по event_journal/stats/sessions/auth_sessions
 #
 # Опционально для transport auth:
@@ -202,6 +204,7 @@ go run ./cmd/telegram
 # Опционально для PostgreSQL-backed transport persistence:
 # TELEGRAM_STATE_STORE=postgres DB_HOST=localhost DB_PORT=5432 DB_NAME=telegram_bot DB_USER=modulr_app DB_PASS=...
 # Для локального superuser bootstrap DB_USER=postgres тоже допустим, но rls-status предупредит о bypass
+# Для staging/production: DB_REQUIRE_RLS_EFFECTIVE=true, иначе startup не защитит от bypass роли
 # На staging/production держи DB_AUTO_MIGRATE=false и запускай migrations отдельным deployment step.
 # В этом режиме sessions и trace-связанный event_journal пишутся в databases/
 # Auth модуль также может использовать DB-backed auth_sessions через databases.NewAuthSessionStore(db)
