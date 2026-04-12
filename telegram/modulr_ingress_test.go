@@ -411,3 +411,42 @@ func TestRegisterModulrIngressRequiresAuthWhenConfigured(t *testing.T) {
 		t.Fatalf("runtime should not be called when auth is required, got %+v", rt.msg)
 	}
 }
+
+func TestRegisterModulrIngressMarksRuntimeContextAsAuthRequired(t *testing.T) {
+	api := &fakeBotAPI{}
+	rt := &fakeRuntime{
+		result: app.HandleResult{
+			TraceID: "tr-auth-required",
+			Status:  "completed",
+		},
+	}
+	authAPI := &fakeAuthAPI{
+		session: &modulrauth.Session{
+			UserID:        "auth-user-2",
+			Scope:         "business",
+			AllowedScopes: []string{"business"},
+			Roles:         []modulrauth.Role{modulrauth.RoleUser},
+		},
+	}
+
+	if err := RegisterModulrIngress(api, rt, "personal", time.Second, WithAuth(authAPI, AuthConfig{Required: true})); err != nil {
+		t.Fatalf("RegisterModulrIngress returned error: %v", err)
+	}
+
+	resp, err := api.textHandler(context.Background(), &handler.Request{
+		ChatID:   11,
+		UserID:   12,
+		Username: "dora",
+		Text:     "создай задачу",
+		State:    state.SetAuthSessionReference(state.SetActiveScope(state.Session{}, "business"), "ref-777"),
+	})
+	if err != nil {
+		t.Fatalf("text handler returned error: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("expected response")
+	}
+	if got := rt.msg.Context["auth_required"]; got != true {
+		t.Fatalf("runtime context auth_required = %v, want true", got)
+	}
+}

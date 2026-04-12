@@ -359,6 +359,98 @@ func TestRuntimeHandleMessageSyncAllowsCrossScopeDecisionWithExplicitPolicy(t *t
 	}
 }
 
+func TestRuntimeHandleMessageSyncRejectsDecisionByRoleAuthorization(t *testing.T) {
+	rt := NewRuntime(WithAIEngine(&fakeAIEngine{
+		decisions: []aiengine.Decision{
+			{
+				Target:     "tracker",
+				Action:     "create_reminder",
+				ModelID:    "tracker-guest-denied",
+				Confidence: 0.96,
+				Scope:      "personal",
+				Parameters: map[string]any{"title": "не должно пройти"},
+			},
+		},
+	}))
+	ctx := context.Background()
+
+	if err := rt.Start(ctx); err != nil {
+		t.Fatalf("Start returned error: %v", err)
+	}
+	defer func() {
+		if err := rt.Stop(ctx); err != nil {
+			t.Fatalf("Stop returned error: %v", err)
+		}
+	}()
+
+	result, err := rt.HandleMessageSync(ctx, InboundMessage{
+		ChatID:   101,
+		UserID:   9001,
+		Username: "guest-user",
+		Text:     "создай напоминание",
+		Scope:    "personal",
+		Source:   "telegram",
+		Context: map[string]any{
+			"roles":         []string{"guest"},
+			"auth_required": true,
+		},
+	})
+	if err != nil {
+		t.Fatalf("HandleMessageSync returned error: %v", err)
+	}
+	if result.Status != "fallback" {
+		t.Fatalf("unexpected result status %q", result.Status)
+	}
+	if !strings.Contains(result.Reason, "role_denied") {
+		t.Fatalf("unexpected fallback reason %q", result.Reason)
+	}
+}
+
+func TestRuntimeHandleMessageSyncAllowsDecisionForUserRole(t *testing.T) {
+	rt := NewRuntime(WithAIEngine(&fakeAIEngine{
+		decisions: []aiengine.Decision{
+			{
+				Target:     "tracker",
+				Action:     "create_reminder",
+				ModelID:    "tracker-user-allowed",
+				Confidence: 0.96,
+				Scope:      "personal",
+				Parameters: map[string]any{"title": "должно пройти"},
+			},
+		},
+	}))
+	ctx := context.Background()
+
+	if err := rt.Start(ctx); err != nil {
+		t.Fatalf("Start returned error: %v", err)
+	}
+	defer func() {
+		if err := rt.Stop(ctx); err != nil {
+			t.Fatalf("Stop returned error: %v", err)
+		}
+	}()
+
+	result, err := rt.HandleMessageSync(ctx, InboundMessage{
+		ChatID:   102,
+		UserID:   9002,
+		Username: "auth-user",
+		Text:     "создай напоминание",
+		Scope:    "personal",
+		Source:   "telegram",
+		Context: map[string]any{
+			"roles":         []string{"user"},
+			"auth_required": true,
+			"user_id":       "auth-user-102",
+		},
+	})
+	if err != nil {
+		t.Fatalf("HandleMessageSync returned error: %v", err)
+	}
+	if result.Status != "completed" || result.ActionEvent != string(EventTrackerCreateReminder) {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+}
+
 func TestRuntimeMetricsCaptureScopeAndTrace(t *testing.T) {
 	rt := NewRuntime()
 	ctx := context.Background()

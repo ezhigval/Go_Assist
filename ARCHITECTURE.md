@@ -110,6 +110,7 @@
 
 - Отмена через **`context.Context`**, блокировки **`sync.RWMutex`** в конкурентных структурах.  
 - Паники обработчиков шины — лог + dead-letter (где реализовано).  
+- При `auth_required` orchestrator режет доменные dispatch-решения без ролей или с ролью, которой target event не разрешён; summary причин идёт в fallback для диагностики.
 - Fallback оркестратора: **`v1.orchestrator.fallback.requested`** при сбое ИИ или пустом допустимом наборе решений.
 
 ---

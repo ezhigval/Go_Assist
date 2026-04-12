@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"modulr/core/aiengine"
@@ -17,6 +18,16 @@ type Pipeline struct {
 	reg       *ModuleRegistry
 	mon       *Monitor
 	threshold float64
+}
+
+type DispatchFilterReport struct {
+	Allowed  []aiengine.Decision
+	Rejected []RejectedDecision
+}
+
+type RejectedDecision struct {
+	DecisionID string
+	Reason     string
 }
 
 // NewPipeline создаёт конвейер.
@@ -67,27 +78,76 @@ func (p *Pipeline) Prioritize(decs []aiengine.Decision) []aiengine.Decision {
 
 // DispatchFilter возвращает решения, прошедшие порог, реестр эндпоинтов и scope-policy.
 func (p *Pipeline) DispatchFilter(scope string, tags []string, metadata map[string]any, decs []aiengine.Decision) []aiengine.Decision {
-	var ok []aiengine.Decision
+	return p.DispatchFilterReport(scope, tags, metadata, decs).Allowed
+}
+
+// DispatchFilterReport возвращает прошедшие решения и причины отклонения остальных.
+func (p *Pipeline) DispatchFilterReport(scope string, tags []string, metadata map[string]any, decs []aiengine.Decision) DispatchFilterReport {
+	var report DispatchFilterReport
 	for _, d := range decs {
-		if d.Confidence < p.threshold {
+		filtered, rejectReason, allowed := p.filterDecision(scope, tags, metadata, d)
+		if allowed {
+			report.Allowed = append(report.Allowed, filtered)
 			continue
 		}
-		effectiveScope := firstNonEmpty(d.Scope, scope)
-		if effectiveScope != "" && !events.IsValidSegment(events.Segment(effectiveScope)) {
-			continue
-		}
-		if scope != "" && !events.ScopeAllowed(events.Segment(scope), events.Segment(effectiveScope), tags, metadata) {
-			continue
-		}
-		if !p.reg.HasEndpoint(d.Target, d.Action) {
-			continue
-		}
-		if d.Scope == "" {
-			d.Scope = effectiveScope
-		}
-		ok = append(ok, d)
+		report.Rejected = append(report.Rejected, RejectedDecision{
+			DecisionID: d.ID,
+			Reason:     rejectReason,
+		})
 	}
-	return ok
+	return report
+}
+
+func (r DispatchFilterReport) Summary() string {
+	if len(r.Rejected) == 0 {
+		return ""
+	}
+	counts := make(map[string]int, len(r.Rejected))
+	for _, item := range r.Rejected {
+		counts[item.Reason]++
+	}
+	keys := make([]string, 0, len(counts))
+	for key := range counts {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%d", key, counts[key]))
+	}
+	return strings.Join(parts, ", ")
+}
+
+func (p *Pipeline) filterDecision(scope string, tags []string, metadata map[string]any, d aiengine.Decision) (aiengine.Decision, string, bool) {
+	if d.Confidence < p.threshold {
+		return d, "below_threshold", false
+	}
+
+	effectiveScope := firstNonEmpty(d.Scope, scope)
+	if effectiveScope != "" && !events.IsValidSegment(events.Segment(effectiveScope)) {
+		return d, "invalid_scope", false
+	}
+	if scope != "" && !events.ScopeAllowed(events.Segment(scope), events.Segment(effectiveScope), tags, metadata) {
+		return d, "scope_denied", false
+	}
+	if !p.reg.HasEndpoint(d.Target, d.Action) {
+		return d, "endpoint_unknown", false
+	}
+
+	targetEvent := fmt.Sprintf("v1.%s.%s", d.Target, d.Action)
+	roles := events.NormalizeRoles(metadata["roles"])
+	if len(roles) != 0 && !events.RolesAllowEvent(roles, targetEvent) {
+		return d, "role_denied", false
+	}
+	if events.MetadataAuthRequired(metadata) && len(roles) == 0 {
+		return d, "auth_required", false
+	}
+
+	if d.Scope == "" {
+		d.Scope = effectiveScope
+	}
+	return d, "", true
 }
 
 // Dispatch публикует сводное событие диспетча и целевые v1.{module}.{action}.

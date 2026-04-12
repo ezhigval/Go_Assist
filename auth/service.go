@@ -132,16 +132,7 @@ func (s *Service) RevokeSessionReference(ctx context.Context, reference string) 
 
 // roleAllows простая матрица: guest — только чтение системных; user — широкий набор; admin — всё.
 func (s *Service) roleAllows(r Role, eventName string) bool {
-	switch r {
-	case RoleAdmin:
-		return true
-	case RoleGuest:
-		return eventName == string(events.V1SystemStartup)
-	case RoleUser:
-		return true
-	default:
-		return false
-	}
+	return events.RoleAllowsEvent(string(r), eventName)
 }
 
 // CanEmit true, если хотя бы одна роль разрешает событие.

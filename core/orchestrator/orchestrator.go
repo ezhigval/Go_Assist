@@ -228,9 +228,13 @@ func (o *Orchestrator) ProcessEvent(ctx context.Context, e coreevents.Event) err
 	}
 
 	decs = o.pipe.Prioritize(decs)
-	filtered := o.pipe.DispatchFilter(ev.Scope, ev.Tags, ev.Context, decs)
-	if len(filtered) == 0 {
-		o.handleFallback(ctx, ev, fmt.Errorf("orchestrator: no decisions passed filters"))
+	report := o.pipe.DispatchFilterReport(ev.Scope, ev.Tags, ev.Context, decs)
+	if len(report.Allowed) == 0 {
+		reason := "orchestrator: no decisions passed filters"
+		if summary := report.Summary(); summary != "" {
+			reason += " (" + summary + ")"
+		}
+		o.handleFallback(ctx, ev, fmt.Errorf(reason))
 		return nil
 	}
 
@@ -240,7 +244,7 @@ func (o *Orchestrator) ProcessEvent(ctx context.Context, e coreevents.Event) err
 		trace = fmt.Sprintf("tr_%d", time.Now().UnixNano())
 		ev.Context["trace_id"] = trace
 	}
-	if err := o.pipe.Dispatch(ctx, ev.ChatID, trace, ev.Scope, filtered); err != nil {
+	if err := o.pipe.Dispatch(ctx, ev.ChatID, trace, ev.Scope, report.Allowed); err != nil {
 		o.mon.RecordError()
 		o.handleFallback(ctx, ev, err)
 		return nil

@@ -84,6 +84,9 @@ func RegisterModulrIngress(api BotAPI, ingress RuntimeIngress, defaultScope stri
 		if authResult.Session != nil && cfg.auth != nil {
 			cfg.auth.EnrichContext(authResult.Session, msgContext)
 		}
+		if cfg.authCfg.Required {
+			msgContext["auth_required"] = true
+		}
 		result, err := ingress.HandleMessageSync(runCtx, app.InboundMessage{
 			ChatID:   req.ChatID,
 			UserID:   req.UserID,

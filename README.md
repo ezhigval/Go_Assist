@@ -85,6 +85,7 @@ Data Layer (PostgreSQL | Redis | Vector DB | Local Storage)
 **Безопасность:**
 - Все внешние запросы проходят PII-редакцию
 - `scope`-изоляция: данные `personal` не передаются в `business`
+- При `auth_required` оркестратор не dispatch'ит доменные `v1.*` без валидных ролей; `guest` допускается только к системным событиям
 - `confidence < 0.7` -> требует подтверждения пользователя
 - Логи без персональных данных, аудит всех решений
 
@@ -213,6 +214,7 @@ go run ./cmd/telegram
 # Auth модуль также может использовать DB-backed auth_sessions через databases.NewAuthSessionStore(db)
 # Доступны transport-команды /login, /whoami, /logout; при TELEGRAM_AUTH_REQUIRED=true
 # обычные сообщения требуют валидную auth session для текущего scope.
+# ingress дополнительно помечает запрос как auth_required, а orchestrator режет dispatch без ролей или с ролью, которой событие не разрешено.
 ```
 
 ### 6. Локальный AI-стек (опционально)

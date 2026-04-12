@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"modulr/events"
 )
 
 func TestCreateSessionUsesScopeContext(t *testing.T) {
@@ -53,6 +55,25 @@ func TestAuthorizeEventChecksScope(t *testing.T) {
 	}
 	if svc.AuthorizeEvent(sess, "v1.finance.transaction.created", "pets") {
 		t.Fatal("expected pets scope to be denied")
+	}
+}
+
+func TestCanEmitUsesSharedRoleMatrix(t *testing.T) {
+	t.Parallel()
+
+	svc := NewService(Config{SessionTTL: time.Hour}, NewMemorySessionStore(), nil)
+
+	guest := &Session{Roles: []Role{RoleGuest}}
+	if !svc.CanEmit(guest, string(events.V1SystemStartup)) {
+		t.Fatal("expected guest to emit system startup")
+	}
+	if svc.CanEmit(guest, "v1.finance.create_transaction") {
+		t.Fatal("expected guest to be denied for finance action")
+	}
+
+	user := &Session{Roles: []Role{RoleUser}}
+	if !svc.CanEmit(user, "v1.finance.create_transaction") {
+		t.Fatal("expected user to emit finance action")
 	}
 }
 

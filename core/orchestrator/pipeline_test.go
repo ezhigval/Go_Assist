@@ -88,6 +88,49 @@ func TestPipelineDispatchFilterAllowsCrossScopeFromMetadataPolicy(t *testing.T) 
 	}
 }
 
+func TestPipelineDispatchFilterReportRejectsGuestRoleForDomainAction(t *testing.T) {
+	reg := NewModuleRegistry()
+	if err := reg.RegisterModule("finance", []string{"create_transaction"}); err != nil {
+		t.Fatalf("RegisterModule returned error: %v", err)
+	}
+	pipe := NewPipeline(coreevents.NewMemoryBus(), reg, NewMonitor(), 0.8)
+
+	report := pipe.DispatchFilterReport("business", nil, map[string]any{
+		"roles": []string{"guest"},
+	}, []aiengine.Decision{
+		{ID: "guest-denied", Target: "finance", Action: "create_transaction", Confidence: 0.95, Scope: "business"},
+	})
+	if len(report.Allowed) != 0 {
+		t.Fatalf("expected no allowed decisions, got %+v", report.Allowed)
+	}
+	if len(report.Rejected) != 1 || report.Rejected[0].Reason != "role_denied" {
+		t.Fatalf("unexpected rejected report: %+v", report.Rejected)
+	}
+	if report.Summary() != "role_denied=1" {
+		t.Fatalf("Summary() = %q, want role_denied=1", report.Summary())
+	}
+}
+
+func TestPipelineDispatchFilterReportRejectsMissingAuthWhenRequired(t *testing.T) {
+	reg := NewModuleRegistry()
+	if err := reg.RegisterModule("tracker", []string{"create_reminder"}); err != nil {
+		t.Fatalf("RegisterModule returned error: %v", err)
+	}
+	pipe := NewPipeline(coreevents.NewMemoryBus(), reg, NewMonitor(), 0.8)
+
+	report := pipe.DispatchFilterReport("personal", nil, map[string]any{
+		"auth_required": true,
+	}, []aiengine.Decision{
+		{ID: "auth-required", Target: "tracker", Action: "create_reminder", Confidence: 0.95, Scope: "personal"},
+	})
+	if len(report.Allowed) != 0 {
+		t.Fatalf("expected no allowed decisions, got %+v", report.Allowed)
+	}
+	if len(report.Rejected) != 1 || report.Rejected[0].Reason != "auth_required" {
+		t.Fatalf("unexpected rejected report: %+v", report.Rejected)
+	}
+}
+
 func TestPipelineDispatchPublishesSummaryAndTargetEvent(t *testing.T) {
 	bus := coreevents.NewMemoryBus()
 	reg := NewModuleRegistry()
