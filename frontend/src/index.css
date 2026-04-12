@@ -1,3 +1,52 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --modulr-page: #f4ecdf;
+  --modulr-ink: #201710;
+  --modulr-muted: #6d5847;
+  --modulr-line: rgba(58, 39, 22, 0.12);
+  --modulr-panel: rgba(255, 251, 244, 0.78);
+  font-family: "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
+  color: var(--modulr-ink);
+  background:
+    radial-gradient(circle at top left, rgba(217, 119, 6, 0.16), transparent 28rem),
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 24rem),
+    linear-gradient(180deg, #fbf6ed 0%, #f2e6d7 100%);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--modulr-ink);
+  background:
+    radial-gradient(circle at top left, rgba(217, 119, 6, 0.18), transparent 26rem),
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 22rem),
+    linear-gradient(180deg, #fbf7f1 0%, #efe4d5 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+@layer components {
+  .glass-card {
+    @apply rounded-[32px] border p-6 shadow-[0_22px_80px_rgba(49,33,17,0.10)] backdrop-blur-xl;
+    background: var(--modulr-panel);
+    border-color: var(--modulr-line);
+  }
+}

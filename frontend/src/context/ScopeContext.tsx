@@ -214,7 +214,7 @@ export function ScopeProvider({ children, initialUser = null, apiClient }: Scope
 
   // Persist active scope to localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (hasBrowserStorage()) {
       try {
         localStorage.setItem('modulr-active-scope', JSON.stringify(state.activeScope));
       } catch (error) {
@@ -225,7 +225,7 @@ export function ScopeProvider({ children, initialUser = null, apiClient }: Scope
 
   // Load active scope from localStorage on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (hasBrowserStorage()) {
       try {
         const saved = localStorage.getItem('modulr-active-scope');
         if (saved) {
@@ -400,6 +400,15 @@ function arraysEqual<T>(a: T[], b: T[]): boolean {
     if (a[i] !== b[i]) return false;
   }
   return true;
+}
+
+function hasBrowserStorage(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof localStorage !== 'undefined' &&
+    typeof localStorage.getItem === 'function' &&
+    typeof localStorage.setItem === 'function'
+  );
 }
 
 // ============================================================================

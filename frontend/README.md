@@ -11,6 +11,15 @@ Modulr Frontend is a comprehensive React-based application that runs on multiple
 - **Desktop** - Windows, macOS, Linux via Tauri
 - **Wearables** - watchOS and Wear OS (limited UI)
 
+## Current Surface
+
+Текущий реализованный web/PWA слой — это `v2.0 Control Plane`:
+- broker lanes с consumer-group конфигурацией и статусами rollout;
+- module dispatch matrix для admission / queue mode;
+- plugin registry для `process|wasm` manifests;
+- scope presets и quick tags с local persistence fallback;
+- `npm run verify` покрывает type-check, vitest и production build.
+
 ## Architecture
 
 ### Core Principles
@@ -176,6 +185,7 @@ src/
     calendar/         # Calendar functionality
     tracker/          # Task tracking
     finance/          # Financial management
+    control-plane/    # v2.0 broker/module/plugin/scope dashboard
   platforms/          # Platform-specific code
     telegram/         # Telegram Mini App
     web/              # Web/PWA features
@@ -185,6 +195,7 @@ src/
     core.ts           # Core types
     events.ts         # Event types
     modules.ts        # Module types
+    control-plane.ts  # Control plane snapshot types
 ```
 
 ## Key Features

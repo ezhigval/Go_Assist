@@ -117,8 +117,9 @@
 ## 📈 Масштабирование
 
 - Вертикально: пулы БД, кэш.  
-- Горизонтально: вынести шину в брокер, stateless-воркеры.  
-- Продуктово: **настройка scope/тегов в UI** «в пару кликов» без смены кода модулей.
+- Горизонтально: вынести шину в broker contract (`core/distributed`) и раскладывать обработку по consumer groups / stateless-воркерам.  
+- Расширяемость: versioned plugin manifests (`plugins/`) описывают runtime `process|wasm`, entrypoint, protocol и capability map до фактической загрузки sandbox/process runner.
+- Продуктово: **настройка scope/тегов в UI** «в пару кликов» через web control plane без смены кода модулей.
 
 ---
 
@@ -128,10 +129,13 @@
 |-------|------------|
 | `app` | Runtime-сборка v0.3: входящее сообщение → core bus → orchestrator → bus bridge → доменные обработчики |
 | `telegram`, `databases`, `auth` | Вход, данные, сессии, event journal |
+| `core/distributed` | Foundation-контракт для broker-backed event lanes и consumer groups в v2.0 |
+| `plugins` | Versioned plugin manifests и capability registry для process/WASM expansion path |
 | `organizer` | Календарь, todo, заметки, контакты |
 | `events`, `metrics`, `notifications`, `scheduler`, `files` | Инфраструктура и сквозные возможности |
 | `finance`, `tracker`, `knowledge`, `media`, `email` | Доменные операции |
 | `core/orchestrator`, `core/aiengine`, `core/events` | Мозг и ИИ-хаб |
+| `frontend/src/modules/control-plane` | Web/PWA control plane для настройки broker/module/plugin/scope snapshot в dev/runtime UI |
 
 ---
 

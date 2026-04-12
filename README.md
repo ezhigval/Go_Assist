@@ -37,8 +37,10 @@ Data Layer (PostgreSQL | Redis | Vector DB | Local Storage)
 
 **Ключевые компоненты:**
 - `core/events/` - EventBus для системы
+- `core/distributed/` - foundation для broker-backed lanes и consumer groups
 - `core/orchestrator/` - Валидация решений AI
 - `core/aiengine/` - Реестры моделей и маршрутизация
+- `plugins/` - versioned registry для process/WASM plugin manifests
 - Domain модули - Изолированная бизнес-логика
 
 **Документация:**
@@ -100,13 +102,14 @@ Data Layer (PostgreSQL | Redis | Vector DB | Local Storage)
 | Platform | Status | Technologies |
 |----------|--------|-------------|
 | Telegram Mini App | MVP | React, @twa-dev/sdk, Vite |
-| PWA (Web) | В разработке | React, Vite PWA, IndexedDB |
+| PWA (Web) | `v2.0 foundation` | React, Vite PWA, local control plane snapshot |
 | iOS / Android | Планируется | React Native + Capacitor |
 | Desktop (Win/macOS/Linux) | Планируется | Tauri (Rust + React) |
 | Wearables (watchOS/Wear OS) | Идея | Нативные компликации |
 
 **Особенности:**
 - Контекстная навигация: переключай сферы жизни в один клик
+- `Control Plane`: broker lanes, plugin registry и scope presets уже конфигурируются в web-слое без правки кода
 - Визуализация связей: карточки показывают связанные сущности
 - Офлайн-первый: кэширование, синхронизация при появлении сети
 - Модульный UI: компоненты = бэкенд-модули, переиспользование 90%+

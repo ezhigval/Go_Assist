@@ -1,5 +1,5 @@
 import { forwardRef, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
-import { cn } from '@modulr/lib/utils';
+import { cn } from '../../lib/utils';
 
 const buttonVariants = {
   primary: 'bg-primary-600 text-white border-primary-600 hover:bg-primary-700',

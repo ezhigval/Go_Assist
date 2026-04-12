@@ -8,6 +8,14 @@
 
 ---
 
+## [2026-04-12] v2.0 foundation: distributed contracts, plugin registry, control plane
+
+- [2026-04-12] | `core/distributed/broker.go`, `core/distributed/adapter.go`, `core/distributed/broker_test.go` | Для старта `v2.0` добавлен broker foundation с transport-agnostic envelope, `Publish`/`SubscribeGroup`, round-robin consumer groups, topic stats и adapter-ом к `core/events.Event` | §2 A2, §4 C1, §5 V1, §7
+- [2026-04-12] | `plugins/registry.go`, `plugins/registry_test.go` | Добавлен versioned plugin registry: JSON manifest contract, runtime `process|wasm`, protocol `grpc|stdio`, capability-based resolve, `LoadDir("*.plugin.json")` и path escape guard для entrypoint | §2 A2, §3 E3, §5 V1, §7
+- [2026-04-12] | `frontend/src/types/control-plane.ts`, `frontend/src/lib/api.ts`, `frontend/src/modules/control-plane/ControlPlaneDashboard.tsx`, `frontend/src/context/ScopeContext.tsx`, `frontend/src/test/control-plane.spec.tsx`, `frontend/tests/e2e/smoke.spec.ts`, `frontend/src/App.tsx`, `frontend/src/index.css`, `frontend/README.md`, `README.md`, `ROADMAP.md`, `ARCHITECTURE.md` | Web/PWA поверхность переведена на `Control Plane`: локально-персистентный snapshot для broker/module/plugin/scope конфигурации, живой event log, safe browser-storage fallback, UI tests и синхронизированная документация по старту `v2.0` | §1 I4, §4 C1, §5 V1, §7
+
+---
+
 ## [2026-04-11] v0.2: bus bridge и базовый тестовый контур
 
 - [2026-04-11] | `core/busbridge/bridge.go` | **Создан** двунаправленный адаптер между `modulr/events` и `modulr/core/events`; переносит `trace_id/chat_id/scope/tags`, поддерживает alias core→domain и защиту от циклов | §2 A2, §5 V2
