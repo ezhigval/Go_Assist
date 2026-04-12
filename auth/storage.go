@@ -8,3 +8,9 @@ type SessionStore interface {
 	Get(ctx context.Context, token string) (*Session, error)
 	Delete(ctx context.Context, token string) error
 }
+
+// SessionReferenceStore хранит доступ к сессиям по безопасному opaque reference.
+type SessionReferenceStore interface {
+	GetByReference(ctx context.Context, reference string) (*Session, error)
+	DeleteByReference(ctx context.Context, reference string) error
+}

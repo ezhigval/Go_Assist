@@ -2,11 +2,13 @@ package telegram
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	"modulr/app"
+	modulrauth "modulr/auth"
 	"telegram/handler"
 	"telegram/state"
 )
@@ -25,6 +27,19 @@ func (f *fakeRuntime) HandleMessageSync(ctx context.Context, msg app.InboundMess
 type fakeBotAPI struct {
 	textHandler handler.HandlerFunc
 	commands    map[string]handler.HandlerFunc
+}
+
+type fakeAuthAPI struct {
+	createToken string
+	createErr   error
+	validateErr error
+	revokeErr   error
+	session     *modulrauth.Session
+
+	lastCreateUserID string
+	lastCreateRoles  []modulrauth.Role
+	lastReference    string
+	lastContext      map[string]any
 }
 
 func (f *fakeBotAPI) RegisterCommand(cmd string, h handler.HandlerFunc) error {
@@ -52,6 +67,63 @@ func (f *fakeBotAPI) RegisterText(pattern string, h handler.HandlerFunc) error {
 	f.textHandler = h
 	return nil
 }
+
+func (f *fakeAuthAPI) CreateSession(ctx context.Context, userID string, roles []modulrauth.Role) (string, error) {
+	f.lastCreateUserID = userID
+	f.lastCreateRoles = append([]modulrauth.Role(nil), roles...)
+	if f.createErr != nil {
+		return "", f.createErr
+	}
+	if f.createToken != "" {
+		return f.createToken, nil
+	}
+	return "transport-token", nil
+}
+
+func (f *fakeAuthAPI) ValidateToken(ctx context.Context, token string) (*modulrauth.Session, error) {
+	return nil, fmt.Errorf("unexpected ValidateToken(%q)", token)
+}
+
+func (f *fakeAuthAPI) ValidateSessionReference(ctx context.Context, reference string) (*modulrauth.Session, error) {
+	f.lastReference = reference
+	if f.validateErr != nil {
+		return nil, f.validateErr
+	}
+	if f.session != nil {
+		clone := *f.session
+		clone.AllowedScopes = append([]string(nil), f.session.AllowedScopes...)
+		clone.Roles = append([]modulrauth.Role(nil), f.session.Roles...)
+		return &clone, nil
+	}
+	return &modulrauth.Session{
+		UserID:        "42",
+		Scope:         "personal",
+		AllowedScopes: []string{"personal"},
+		Roles:         []modulrauth.Role{modulrauth.RoleUser},
+		ExpiresAt:     time.Now().Add(time.Hour),
+	}, nil
+}
+
+func (f *fakeAuthAPI) RevokeSession(ctx context.Context, token string) error {
+	return fmt.Errorf("unexpected RevokeSession(%q)", token)
+}
+
+func (f *fakeAuthAPI) RevokeSessionReference(ctx context.Context, reference string) error {
+	f.lastReference = reference
+	return f.revokeErr
+}
+
+func (f *fakeAuthAPI) CanEmit(s *modulrauth.Session, eventName string) bool { return true }
+
+func (f *fakeAuthAPI) EnrichContext(s *modulrauth.Session, ctx map[string]any) {
+	f.lastContext = ctx
+	ctx["user_id"] = s.UserID
+	ctx["roles"] = []string{"user"}
+	ctx["allowed_scopes"] = append([]string(nil), s.AllowedScopes...)
+}
+
+func (f *fakeAuthAPI) Start(ctx context.Context) error { return nil }
+func (f *fakeAuthAPI) Stop() error                     { return nil }
 
 func TestRegisterModulrIngressFormatsCompletedResult(t *testing.T) {
 	api := &fakeBotAPI{}
@@ -217,5 +289,125 @@ func TestRegisterModulrIngressScopeCommandSwitchesScope(t *testing.T) {
 	}
 	if got := state.ActiveScope(resp.NextState); got != "travel" {
 		t.Fatalf("expected next state to store travel scope, got %+v", resp.NextState)
+	}
+}
+
+func TestRegisterModulrIngressLoginCommandStoresAuthReference(t *testing.T) {
+	api := &fakeBotAPI{}
+	rt := &fakeRuntime{}
+	authAPI := &fakeAuthAPI{
+		createToken: "issued-token",
+		session: &modulrauth.Session{
+			UserID:        "6",
+			Scope:         "business",
+			AllowedScopes: []string{"business"},
+			Roles:         []modulrauth.Role{modulrauth.RoleUser},
+			ExpiresAt:     time.Date(2026, 4, 12, 10, 0, 0, 0, time.UTC),
+		},
+	}
+
+	if err := RegisterModulrIngress(api, rt, "business", time.Second, WithAuth(authAPI, AuthConfig{})); err != nil {
+		t.Fatalf("RegisterModulrIngress returned error: %v", err)
+	}
+
+	loginHandler := api.commands["login"]
+	if loginHandler == nil {
+		t.Fatalf("expected /login handler to be registered")
+	}
+
+	resp, err := loginHandler(context.Background(), &handler.Request{
+		ChatID:   5,
+		UserID:   6,
+		Username: "alice",
+		Text:     "/login",
+		State:    state.SetActiveScope(state.Session{}, "business"),
+	})
+	if err != nil {
+		t.Fatalf("login handler returned error: %v", err)
+	}
+	if resp == nil || !strings.Contains(resp.Text, "Auth session активна") {
+		t.Fatalf("unexpected login response: %+v", resp)
+	}
+	if got := state.AuthSessionReference(resp.NextState); got != modulrauth.SessionReference("issued-token") {
+		t.Fatalf("expected auth reference to be stored, got %q", got)
+	}
+	if authAPI.lastCreateUserID != "6" {
+		t.Fatalf("CreateSession userID = %q, want 6", authAPI.lastCreateUserID)
+	}
+}
+
+func TestRegisterModulrIngressInjectsAuthContextIntoRuntime(t *testing.T) {
+	api := &fakeBotAPI{}
+	rt := &fakeRuntime{
+		result: app.HandleResult{
+			TraceID: "tr-auth",
+			Status:  "completed",
+		},
+	}
+	authAPI := &fakeAuthAPI{
+		session: &modulrauth.Session{
+			UserID:        "auth-user-1",
+			Scope:         "travel",
+			AllowedScopes: []string{"travel"},
+			Roles:         []modulrauth.Role{modulrauth.RoleUser},
+			ExpiresAt:     time.Now().Add(time.Hour),
+		},
+	}
+
+	if err := RegisterModulrIngress(api, rt, "travel", time.Second, WithAuth(authAPI, AuthConfig{})); err != nil {
+		t.Fatalf("RegisterModulrIngress returned error: %v", err)
+	}
+
+	resp, err := api.textHandler(context.Background(), &handler.Request{
+		ChatID:   7,
+		UserID:   8,
+		Username: "bob",
+		Text:     "покажи поездки",
+		State:    state.SetAuthSessionReference(state.SetActiveScope(state.Session{}, "travel"), "ref-123"),
+	})
+	if err != nil {
+		t.Fatalf("text handler returned error: %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("expected response")
+	}
+	if got := rt.msg.Context["user_id"]; got != "auth-user-1" {
+		t.Fatalf("runtime context user_id = %v, want auth-user-1", got)
+	}
+	scopes, ok := rt.msg.Context["allowed_scopes"].([]string)
+	if !ok || len(scopes) != 1 || scopes[0] != "travel" {
+		t.Fatalf("runtime context allowed_scopes = %v", rt.msg.Context["allowed_scopes"])
+	}
+}
+
+func TestRegisterModulrIngressRequiresAuthWhenConfigured(t *testing.T) {
+	api := &fakeBotAPI{}
+	rt := &fakeRuntime{
+		result: app.HandleResult{
+			TraceID: "tr-noauth",
+			Status:  "completed",
+		},
+	}
+	authAPI := &fakeAuthAPI{}
+
+	if err := RegisterModulrIngress(api, rt, "personal", time.Second, WithAuth(authAPI, AuthConfig{Required: true})); err != nil {
+		t.Fatalf("RegisterModulrIngress returned error: %v", err)
+	}
+
+	resp, err := api.textHandler(context.Background(), &handler.Request{
+		ChatID:   9,
+		UserID:   10,
+		Username: "carol",
+		Text:     "создай задачу",
+		State:    state.SetActiveScope(state.Session{}, "personal"),
+	})
+	if err != nil {
+		t.Fatalf("text handler returned error: %v", err)
+	}
+	if resp == nil || !strings.Contains(resp.Text, "/login") {
+		t.Fatalf("expected auth prompt, got %+v", resp)
+	}
+	if rt.msg.Text != "" {
+		t.Fatalf("runtime should not be called when auth is required, got %+v", rt.msg)
 	}
 }

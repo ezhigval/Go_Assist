@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"modulr/events"
@@ -92,9 +93,41 @@ func (s *Service) ValidateToken(ctx context.Context, token string) (*Session, er
 	return sess, nil
 }
 
+// ValidateSessionReference проверяет opaque reference без доступа к raw token.
+func (s *Service) ValidateSessionReference(ctx context.Context, reference string) (*Session, error) {
+	if strings.TrimSpace(reference) == "" {
+		return nil, fmt.Errorf("auth: empty session reference")
+	}
+	refStore, ok := s.store.(SessionReferenceStore)
+	if !ok {
+		return nil, fmt.Errorf("auth: session reference store is not supported")
+	}
+	sess, err := refStore.GetByReference(ctx, strings.TrimSpace(strings.ToLower(reference)))
+	if err != nil {
+		return nil, err
+	}
+	if time.Now().After(sess.ExpiresAt) {
+		_ = refStore.DeleteByReference(ctx, reference)
+		return nil, fmt.Errorf("auth: session expired")
+	}
+	return sess, nil
+}
+
 // RevokeSession инвалидирует сессию.
 func (s *Service) RevokeSession(ctx context.Context, token string) error {
 	return s.store.Delete(ctx, token)
+}
+
+// RevokeSessionReference инвалидирует сессию по opaque reference.
+func (s *Service) RevokeSessionReference(ctx context.Context, reference string) error {
+	refStore, ok := s.store.(SessionReferenceStore)
+	if !ok {
+		return fmt.Errorf("auth: session reference store is not supported")
+	}
+	if strings.TrimSpace(reference) == "" {
+		return nil
+	}
+	return refStore.DeleteByReference(ctx, strings.TrimSpace(strings.ToLower(reference)))
 }
 
 // roleAllows простая матрица: guest — только чтение системных; user — широкий набор; admin — всё.

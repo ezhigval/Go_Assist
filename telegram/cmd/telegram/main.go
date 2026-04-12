@@ -42,9 +42,24 @@ func main() {
 	if err != nil {
 		log.Fatalf("❌ InitBot failed: %v", err)
 	}
+	if persistence.auth != nil {
+		if err := persistence.auth.Start(ctx); err != nil {
+			log.Fatalf("❌ Auth start failed: %v", err)
+		}
+	}
 
 	examples.RegisterStartHandler(bot)
-	if err := telegram.RegisterModulrIngress(bot, rt, cfg.DefaultScope, cfg.RuntimeTimeout); err != nil {
+	if err := telegram.RegisterModulrIngress(
+		bot,
+		rt,
+		cfg.DefaultScope,
+		cfg.RuntimeTimeout,
+		telegram.WithAuth(persistence.auth, telegram.AuthConfig{
+			Required:      cfg.AuthRequired,
+			AdminUserIDs:  cfg.AuthAdminIDs,
+			AllowedScopes: cfg.AuthScopes,
+		}),
+	); err != nil {
 		log.Fatalf("❌ RegisterModulrIngress failed: %v", err)
 	}
 

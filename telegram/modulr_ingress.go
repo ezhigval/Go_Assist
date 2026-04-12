@@ -18,13 +18,18 @@ type RuntimeIngress interface {
 }
 
 // RegisterModulrIngress подключает Telegram text flow к runtime корневого модуля.
-func RegisterModulrIngress(api BotAPI, ingress RuntimeIngress, defaultScope string, timeout time.Duration) error {
+func RegisterModulrIngress(api BotAPI, ingress RuntimeIngress, defaultScope string, timeout time.Duration, opts ...IngressOption) error {
 	if ingress == nil {
 		return fmt.Errorf("telegram: nil runtime ingress")
 	}
 	defaultScope = normalizeTelegramScope(defaultScope)
 	if timeout <= 0 {
 		timeout = 3500 * time.Millisecond
+	}
+	cfg := buildIngressConfig(opts...)
+
+	if err := registerTelegramAuthCommands(api, cfg, defaultScope); err != nil {
+		return err
 	}
 
 	if err := api.RegisterCommand("scope", func(ctx context.Context, req *handler.Request) (*handler.Response, error) {
@@ -62,10 +67,23 @@ func RegisterModulrIngress(api BotAPI, ingress RuntimeIngress, defaultScope stri
 			return &handler.Response{Text: "Пока работаю только с текстовыми сообщениями."}, nil
 		}
 		activeScope := activeTelegramScope(req.State, defaultScope)
+		authResult, err := authorizeTelegramIngress(ctx, req, activeScope, cfg)
+		if err != nil {
+			return nil, err
+		}
+		if authResult.Response != nil {
+			authResult.Response.NextState = mergeTelegramState(authResult.NextState, authResult.Response.NextState)
+			authResult.Response.NextState = state.SetActiveScope(authResult.Response.NextState, activeScope)
+			return authResult.Response, nil
+		}
 
 		runCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 
+		msgContext := make(map[string]any)
+		if authResult.Session != nil && cfg.auth != nil {
+			cfg.auth.EnrichContext(authResult.Session, msgContext)
+		}
 		result, err := ingress.HandleMessageSync(runCtx, app.InboundMessage{
 			ChatID:   req.ChatID,
 			UserID:   req.UserID,
@@ -73,15 +91,17 @@ func RegisterModulrIngress(api BotAPI, ingress RuntimeIngress, defaultScope stri
 			Text:     text,
 			Scope:    activeScope,
 			Source:   "telegram",
+			Context:  msgContext,
 		})
 		if err != nil {
 			return nil, err
 		}
 
+		nextState := state.SetActiveScope(authResult.NextState, activeScope)
 		return &handler.Response{
 			Text:      formatModulrResult(result),
 			ParseMode: "Markdown",
-			NextState: state.SetActiveScope(state.Session{}, activeScope),
+			NextState: nextState,
 		}, nil
 	})
 }

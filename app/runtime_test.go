@@ -400,6 +400,50 @@ func TestRuntimeMetricsCaptureScopeAndTrace(t *testing.T) {
 	}
 }
 
+func TestRuntimePreservesAuthContextAlongsideTransportIdentity(t *testing.T) {
+	journal := &fakeJournal{}
+	rt := NewRuntime(WithEventJournal(journal))
+	ctx := context.Background()
+
+	if err := rt.Start(ctx); err != nil {
+		t.Fatalf("Start returned error: %v", err)
+	}
+	defer func() {
+		if err := rt.Stop(ctx); err != nil {
+			t.Fatalf("Stop returned error: %v", err)
+		}
+	}()
+
+	traceID, err := rt.HandleMessage(ctx, InboundMessage{
+		ChatID:   98,
+		UserID:   9010,
+		Username: "transport-user",
+		Text:     "проверь auth metadata",
+		Scope:    "business",
+		Source:   "telegram",
+		Context: map[string]any{
+			"user_id":        "auth-user-42",
+			"roles":          []string{"admin"},
+			"allowed_scopes": []string{"business", "travel"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("HandleMessage returned error: %v", err)
+	}
+
+	entries := waitForJournalEntries(t, journal, traceID, 1)
+	entry := entries[0]
+	if got := entry.Metadata["user_id"]; got != "auth-user-42" {
+		t.Fatalf("journal metadata user_id = %v, want auth-user-42", got)
+	}
+	if got := entry.Metadata["transport_user_id"]; got != int64(9010) {
+		t.Fatalf("journal metadata transport_user_id = %v, want 9010", got)
+	}
+	if got := entry.Metadata["transport_username"]; got != "transport-user" {
+		t.Fatalf("journal metadata transport_username = %v, want transport-user", got)
+	}
+}
+
 func TestRuntimeHandleMessageSyncReturnsFallbackWhenAIAnalyzeFails(t *testing.T) {
 	journal := &fakeJournal{}
 	rt := NewRuntime(

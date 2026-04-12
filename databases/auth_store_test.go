@@ -39,6 +39,9 @@ func TestBuildAuthSessionRecordNormalizesScopeAndHash(t *testing.T) {
 	if access.AuthTokenHash != record.TokenHash {
 		t.Fatalf("access token hash = %q, want %q", access.AuthTokenHash, record.TokenHash)
 	}
+	if record.TokenHash != auth.SessionReference(" raw-token ") {
+		t.Fatalf("token hash = %q, want auth.SessionReference output", record.TokenHash)
+	}
 }
 
 func TestHydrateAuthSessionRestoresSession(t *testing.T) {
@@ -66,12 +69,12 @@ func TestHydrateAuthSessionRestoresSession(t *testing.T) {
 	}
 }
 
-func TestHashAuthTokenDeterministic(t *testing.T) {
+func TestSessionReferenceDeterministic(t *testing.T) {
 	t.Parallel()
 
-	first := hashAuthToken("token-123")
-	second := hashAuthToken("token-123")
-	third := hashAuthToken("token-456")
+	first := auth.SessionReference("token-123")
+	second := auth.SessionReference("token-123")
+	third := auth.SessionReference("token-456")
 
 	if first != second {
 		t.Fatalf("expected deterministic hash, got %q and %q", first, second)

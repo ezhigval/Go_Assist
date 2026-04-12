@@ -56,6 +56,45 @@ func TestAuthorizeEventChecksScope(t *testing.T) {
 	}
 }
 
+func TestValidateSessionReferenceUsesOpaqueReference(t *testing.T) {
+	t.Parallel()
+
+	store := NewMemorySessionStore()
+	svc := NewService(Config{SessionTTL: time.Hour}, store, nil)
+
+	token, err := svc.CreateSession(context.Background(), "user-1", []Role{RoleUser})
+	if err != nil {
+		t.Fatalf("CreateSession returned error: %v", err)
+	}
+
+	sess, err := svc.ValidateSessionReference(context.Background(), SessionReference(token))
+	if err != nil {
+		t.Fatalf("ValidateSessionReference returned error: %v", err)
+	}
+	if sess.UserID != "user-1" {
+		t.Fatalf("user id = %q, want user-1", sess.UserID)
+	}
+}
+
+func TestRevokeSessionReferenceDeletesSession(t *testing.T) {
+	t.Parallel()
+
+	store := NewMemorySessionStore()
+	svc := NewService(Config{SessionTTL: time.Hour}, store, nil)
+
+	token, err := svc.CreateSession(context.Background(), "user-1", []Role{RoleUser})
+	if err != nil {
+		t.Fatalf("CreateSession returned error: %v", err)
+	}
+	ref := SessionReference(token)
+	if err := svc.RevokeSessionReference(context.Background(), ref); err != nil {
+		t.Fatalf("RevokeSessionReference returned error: %v", err)
+	}
+	if _, err := svc.ValidateSessionReference(context.Background(), ref); err == nil {
+		t.Fatal("expected session to be revoked")
+	}
+}
+
 func TestEnrichContextAddsScopeMetadata(t *testing.T) {
 	t.Parallel()
 

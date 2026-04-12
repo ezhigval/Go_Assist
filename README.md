@@ -154,6 +154,11 @@ cp config/config.example.yaml config/config.yaml
 # Выполни SQL под DBA/owner role, затем переключи DB_USER/DB_PASS
 # и проверь go run ./databases/cmd/databases rls-status
 # Команда покажет readiness по event_journal/stats/sessions/auth_sessions
+#
+# Опционально для transport auth:
+# TELEGRAM_AUTH_REQUIRED=true
+# TELEGRAM_AUTH_ADMIN_IDS=12345,67890
+# TELEGRAM_AUTH_ALLOWED_SCOPES=business,travel
 ```
 
 ### 3. Запуск ядра (Go)
@@ -200,6 +205,8 @@ go run ./cmd/telegram
 # На staging/production держи DB_AUTO_MIGRATE=false и запускай migrations отдельным deployment step.
 # В этом режиме sessions и trace-связанный event_journal пишутся в databases/
 # Auth модуль также может использовать DB-backed auth_sessions через databases.NewAuthSessionStore(db)
+# Доступны transport-команды /login, /whoami, /logout; при TELEGRAM_AUTH_REQUIRED=true
+# обычные сообщения требуют валидную auth session для текущего scope.
 ```
 
 ### 6. Локальный AI-стек (опционально)

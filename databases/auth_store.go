@@ -2,8 +2,6 @@ package databases
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -21,6 +19,7 @@ type AuthSessionStore struct {
 }
 
 var _ auth.SessionStore = (*AuthSessionStore)(nil)
+var _ auth.SessionReferenceStore = (*AuthSessionStore)(nil)
 
 // NewAuthSessionStore создаёт DB-backed storage для модуля auth.
 func NewAuthSessionStore(db *DB) *AuthSessionStore {
@@ -85,7 +84,7 @@ func (s *AuthSessionStore) Get(ctx context.Context, token string) (*auth.Session
 		return nil, fmt.Errorf("auth: database session store is nil")
 	}
 
-	tokenHash := hashAuthToken(token)
+	tokenHash := auth.SessionReference(token)
 	access, err := authTokenAccess(tokenHash, nil)
 	if err != nil {
 		return nil, err
@@ -139,7 +138,7 @@ func (s *AuthSessionStore) Delete(ctx context.Context, token string) error {
 		return fmt.Errorf("auth: database session store is nil")
 	}
 
-	tokenHash := hashAuthToken(token)
+	tokenHash := auth.SessionReference(token)
 	access, err := authTokenAccess(tokenHash, nil)
 	if err != nil {
 		return err
@@ -147,6 +146,75 @@ func (s *AuthSessionStore) Delete(ctx context.Context, token string) error {
 
 	return s.db.withStorageAccess(ctx, access, func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx, "DELETE FROM auth_sessions WHERE token_hash = $1", tokenHash)
+		return err
+	})
+}
+
+// GetByReference загружает auth-сессию по opaque reference без raw token.
+func (s *AuthSessionStore) GetByReference(ctx context.Context, reference string) (*auth.Session, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("auth: database session store is nil")
+	}
+	ref := strings.TrimSpace(strings.ToLower(reference))
+	access, err := authTokenAccess(ref, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	record := authSessionRecord{TokenHash: ref}
+	var allowedScopesBytes []byte
+	var rolesBytes []byte
+	var metaBytes []byte
+
+	err = s.db.withStorageAccess(ctx, access, func(tx pgx.Tx) error {
+		return tx.QueryRow(ctx, `
+			SELECT user_id, scope, allowed_scopes, roles, meta, created_at, expires_at
+			FROM auth_sessions
+			WHERE token_hash = $1
+		`, ref).Scan(
+			&record.UserID,
+			&record.Scope,
+			&allowedScopesBytes,
+			&rolesBytes,
+			&metaBytes,
+			&record.CreatedAt,
+			&record.ExpiresAt,
+		)
+	})
+	if err == pgx.ErrNoRows {
+		return nil, fmt.Errorf("auth: session not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	record.AllowedScopes, err = unmarshalStringSlice(allowedScopesBytes)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal auth allowed scopes: %w", err)
+	}
+	record.Roles, err = unmarshalAuthRoles(rolesBytes)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal auth roles: %w", err)
+	}
+	record.Meta, err = unmarshalJSONMap(metaBytes)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal auth meta: %w", err)
+	}
+	return hydrateAuthSession("", record), nil
+}
+
+// DeleteByReference инвалидирует auth-сессию по opaque reference.
+func (s *AuthSessionStore) DeleteByReference(ctx context.Context, reference string) error {
+	if s == nil || s.db == nil {
+		return fmt.Errorf("auth: database session store is nil")
+	}
+	ref := strings.TrimSpace(strings.ToLower(reference))
+	access, err := authTokenAccess(ref, nil)
+	if err != nil {
+		return err
+	}
+	return s.db.withStorageAccess(ctx, access, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, "DELETE FROM auth_sessions WHERE token_hash = $1", ref)
 		return err
 	})
 }
@@ -169,7 +237,7 @@ func buildAuthSessionRecord(token string, sess *auth.Session) (authSessionRecord
 		allowedScopes = []string{string(scope)}
 	}
 
-	tokenHash := hashAuthToken(token)
+	tokenHash := auth.SessionReference(token)
 	access, err := authTokenAccess(tokenHash, allowedScopes)
 	if err != nil {
 		return authSessionRecord{}, storageAccess{}, err
@@ -198,11 +266,6 @@ func hydrateAuthSession(token string, record authSessionRecord) *auth.Session {
 		ExpiresAt:     record.ExpiresAt,
 		Meta:          cloneJSONMap(record.Meta),
 	}
-}
-
-func hashAuthToken(token string) string {
-	sum := sha256.Sum256([]byte(strings.TrimSpace(token)))
-	return hex.EncodeToString(sum[:])
 }
 
 func unmarshalStringSlice(raw []byte) ([]string, error) {

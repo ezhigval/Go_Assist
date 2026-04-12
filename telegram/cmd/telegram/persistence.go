@@ -8,12 +8,14 @@ import (
 
 	"databases"
 	"modulr/app"
+	modulrauth "modulr/auth"
 	telegrampkg "telegram"
 	"telegram/state"
 )
 
 type persistenceBundle struct {
 	store       state.Store
+	auth        modulrauth.AuthAPI
 	runtimeOpts []app.RuntimeOption
 	close       func() error
 }
@@ -21,9 +23,11 @@ type persistenceBundle struct {
 func initPersistence(parent context.Context, cfg telegrampkg.Config) (persistenceBundle, error) {
 	switch strings.ToLower(cfg.StateStore) {
 	case "", "memory":
+		authSvc := modulrauth.NewService(modulrauth.LoadConfig(), modulrauth.NewMemorySessionStore(), nil)
 		return persistenceBundle{
 			store: state.NewMemoryStore(),
-			close: func() error { return nil },
+			auth:  authSvc,
+			close: authSvc.Stop,
 		}, nil
 	case "postgres", "database", "db":
 		ctx, cancel := context.WithTimeout(parent, 10*time.Second)
@@ -39,12 +43,20 @@ func initPersistence(parent context.Context, cfg telegrampkg.Config) (persistenc
 		}
 
 		sessionRepo := databaseSessionRepository{db: db}
+		authSvc := modulrauth.NewService(modulrauth.LoadConfig(), databases.NewAuthSessionStore(db), nil)
 		return persistenceBundle{
 			store: state.NewDatabaseStore(sessionRepo),
+			auth:  authSvc,
 			runtimeOpts: []app.RuntimeOption{
 				app.WithEventJournal(databaseRuntimeJournal{db: db}),
 			},
-			close: db.Stop,
+			close: func() error {
+				if err := authSvc.Stop(); err != nil {
+					_ = db.Stop()
+					return err
+				}
+				return db.Stop()
+			},
 		}, nil
 	default:
 		return persistenceBundle{}, fmt.Errorf("unsupported TELEGRAM_STATE_STORE %q", cfg.StateStore)

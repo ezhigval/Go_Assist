@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -10,11 +11,17 @@ import (
 type MemorySessionStore struct {
 	mu   sync.RWMutex
 	data map[string]*Session
+	refs map[string]string
 }
+
+var _ SessionReferenceStore = (*MemorySessionStore)(nil)
 
 // NewMemorySessionStore создаёт хранилище.
 func NewMemorySessionStore() *MemorySessionStore {
-	return &MemorySessionStore{data: make(map[string]*Session)}
+	return &MemorySessionStore{
+		data: make(map[string]*Session),
+		refs: make(map[string]string),
+	}
 }
 
 // Put сохраняет сессию по токену.
@@ -25,6 +32,7 @@ func (m *MemorySessionStore) Put(_ context.Context, token string, s *Session) er
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.data[token] = cloneSession(s)
+	m.refs[SessionReference(token)] = token
 	return nil
 }
 
@@ -43,6 +51,38 @@ func (m *MemorySessionStore) Get(_ context.Context, token string) (*Session, err
 func (m *MemorySessionStore) Delete(_ context.Context, token string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	delete(m.refs, SessionReference(token))
+	delete(m.data, token)
+	return nil
+}
+
+// GetByReference возвращает сессию по opaque reference.
+func (m *MemorySessionStore) GetByReference(_ context.Context, reference string) (*Session, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	token, ok := m.refs[strings.TrimSpace(strings.ToLower(reference))]
+	if !ok {
+		return nil, fmt.Errorf("auth: session not found")
+	}
+	s, ok := m.data[token]
+	if !ok {
+		return nil, fmt.Errorf("auth: session not found")
+	}
+	return cloneSession(s), nil
+}
+
+// DeleteByReference удаляет сессию по opaque reference.
+func (m *MemorySessionStore) DeleteByReference(_ context.Context, reference string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	ref := strings.TrimSpace(strings.ToLower(reference))
+	token, ok := m.refs[ref]
+	if !ok {
+		return nil
+	}
+	delete(m.refs, ref)
 	delete(m.data, token)
 	return nil
 }

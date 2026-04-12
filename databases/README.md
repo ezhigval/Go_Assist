@@ -117,11 +117,14 @@ Sessions/Auth storage authorization:
 - repository-слой выставляет эти параметры автоматически: `GetSession/ClearSession` используют `chat_id`, `SetSession` комбинирует `chat_id + active_scope`;
 - `auth_sessions` хранят `token_hash` вместо plain token, а DB store `NewAuthSessionStore(db)` реализует `modulr/auth.SessionStore` без прямой зависимости `auth -> databases`;
 - `auth_sessions` защищены policy по `modulr.auth_token_hash`; insert/update дополнительно требуют разрешённый `scope`.
+- `auth/reference.go` добавляет opaque `SessionReference(token)`: transport может хранить только reference и валидировать/ревокать сессию без raw token.
 
 Интеграция с Auth:
 
 - для `auth.NewService(...)` можно передать `databases.NewAuthSessionStore(db)` как внешний `SessionStore`;
 - `auth.Session` теперь scope-aware: базовый `scope` и `allowed_scopes` сохраняются в БД и прокидываются в runtime context через `auth.EnrichContext`.
+- `telegram/cmd/telegram` уже использует этот path: `/login`, `/whoami`, `/logout` работают поверх `auth_sessions`, а state payload хранит только `_auth_session_ref`;
+- `TELEGRAM_AUTH_REQUIRED=true` делает auth обязательной для обычных текстовых сообщений; при этом runtime получает `user_id/roles/allowed_scopes` из auth-сессии и отдельные `transport_user_id/transport_username`.
 
 Stats scope contract:
 

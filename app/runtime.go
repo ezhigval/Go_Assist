@@ -174,8 +174,18 @@ func (r *Runtime) HandleMessage(ctx context.Context, msg InboundMessage) (string
 	meta := cloneContext(msg.Context)
 	meta["trace_id"] = traceID
 	meta["source"] = firstNonEmptyString(msg.Source, "telegram")
-	meta["user_id"] = msg.UserID
-	meta["username"] = msg.Username
+	if _, ok := meta["transport_user_id"]; !ok {
+		meta["transport_user_id"] = msg.UserID
+	}
+	if _, ok := meta["transport_username"]; !ok && msg.Username != "" {
+		meta["transport_username"] = msg.Username
+	}
+	if _, ok := meta["user_id"]; !ok {
+		meta["user_id"] = msg.UserID
+	}
+	if _, ok := meta["username"]; !ok && msg.Username != "" {
+		meta["username"] = msg.Username
+	}
 
 	err := r.coreBus.Publish(events.WithTraceID(ctx, traceID), coreevents.Event{
 		Name:    coreevents.V1MessageReceived,
@@ -200,8 +210,12 @@ func (r *Runtime) HandleMessage(ctx context.Context, msg InboundMessage) (string
 			"tags": append([]string(nil), msg.Tags...),
 		},
 		Metadata: map[string]any{
-			"user_id":  msg.UserID,
-			"username": msg.Username,
+			"user_id":            meta["user_id"],
+			"username":           meta["username"],
+			"transport_user_id":  meta["transport_user_id"],
+			"transport_username": meta["transport_username"],
+			"roles":              meta["roles"],
+			"allowed_scopes":     meta["allowed_scopes"],
 		},
 		CreatedAt: time.Now(),
 	})
