@@ -8,6 +8,12 @@
 
 ---
 
+## [2026-04-12] v2.0: web control plane UX criteria
+
+- [2026-04-12] | `frontend/src/modules/control-plane/ControlPlaneDashboard.tsx`, `frontend/src/context/ScopeContext.tsx`, `frontend/src/lib/api.ts`, `frontend/src/test/control-plane.spec.tsx`, `frontend/README.md`, `ROADMAP.md` | Для web control plane зафиксирован и доведён до рабочего состояния минимальный UX contract: first-screen status summary гидратируется из локального snapshot без ожидания backend, mutating actions имеют явные имена, live feedback идёт через event trace, operator flow покрыт тестами; validation-пункт v2.0 по UX закрыт | §4 C1, §5 V1, §7
+
+---
+
 ## [2026-04-12] v2.0: plugin registry security audit
 
 - [2026-04-12] | `plugins/registry.go`, `plugins/registry_test.go`, `ROADMAP.md`, `ARCHITECTURE.md`, `README.md` | Plugin manifest contract усилен security-guardrails: registry режет absolute `entry`, неизвестные permissions и небезопасные `wasm+grpc` комбинации до фактического запуска runner; validation-пункт v2.0 по security audit закрыт | §3 E3, §5 V1, §7

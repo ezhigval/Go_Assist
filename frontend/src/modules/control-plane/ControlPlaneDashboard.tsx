@@ -74,13 +74,13 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
     availableScopes,
     createScope,
     deleteScope,
-    updateScope,
+    setActiveScope,
     loadScopes,
     error,
     clearError,
     isLoading,
   } = useScope();
-  const [snapshot, setSnapshot] = useState<ControlPlaneSnapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<ControlPlaneSnapshot>(() => api.getControlPlaneSnapshot());
   const [health, setHealth] = useState<HealthState>('checking');
   const [timeline, setTimeline] = useState<DashboardEvent[]>([]);
   const [newScopeSegment, setNewScopeSegment] = useState<Segment>('work');
@@ -108,14 +108,19 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
     let alive = true;
 
     const bootstrap = async () => {
-      const [nextSnapshot, nextHealth] = await Promise.all([
-        api.getControlPlane(),
-        api.healthCheck(),
-      ]);
+      const snapshotPromise = api.getControlPlane();
+      const healthPromise = api.healthCheck().catch(() => ({ ok: false }));
+
+      const nextSnapshot = await snapshotPromise;
       if (!alive) {
         return;
       }
       setSnapshot(nextSnapshot);
+
+      const nextHealth = await healthPromise;
+      if (!alive) {
+        return;
+      }
       setHealth(nextHealth.ok ? 'online' : 'offline');
     };
 
@@ -169,8 +174,8 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
       ? activeScope.tags.filter((value) => value !== tag)
       : [...activeScope.tags, tag];
 
-    await api.updateScopeTags(currentKey, nextTags);
-    updateScope({ tags: nextTags });
+    const updatedScope = await api.updateScopeTags(currentKey, nextTags);
+    setActiveScope(updatedScope);
     await loadScopes();
     await refreshSnapshot();
     eventBus.emit('v1.user.preferences.updated', {
@@ -307,11 +312,22 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
                       {isActive ? (
                         <span className="rounded-full bg-stone-900 px-3 py-1 text-xs font-semibold text-white">Active</span>
                       ) : (
-                        <Button variant="secondary" size="sm" onClick={() => updateScope(scope)}>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          aria-label={`use-scope-${id}`}
+                          onClick={() => setActiveScope(scope)}
+                        >
                           Use
                         </Button>
                       )}
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteScope(id)} disabled={availableScopes.length <= 1}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`remove-scope-${id}`}
+                        onClick={() => handleDeleteScope(id)}
+                        disabled={availableScopes.length <= 1}
+                      >
                         Remove
                       </Button>
                     </div>
@@ -328,6 +344,7 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
                 <select
                   value={newScopeSegment}
                   onChange={(event) => setNewScopeSegment(event.target.value as Segment)}
+                  aria-label="new-scope-segment"
                   className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-stone-900 outline-none ring-0"
                 >
                   {AllSegments.map((segment) => (
@@ -342,12 +359,13 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
                 <input
                   value={newScopeTags}
                   onChange={(event) => setNewScopeTags(event.target.value)}
+                  aria-label="new-scope-tags"
                   placeholder="ops, priority"
                   className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-stone-900 outline-none ring-0"
                 />
               </label>
               <div className="flex items-end">
-                <Button onClick={handleCreateScope} loading={isLoading}>
+                <Button aria-label="add-scope" onClick={handleCreateScope} loading={isLoading}>
                   Add scope
                 </Button>
               </div>
@@ -364,6 +382,8 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
                     key={tag}
                     type="button"
                     onClick={() => handleToggleTag(tag)}
+                    aria-label={`toggle-tag-${tag}`}
+                    aria-pressed={active}
                     className={cn(
                       'rounded-full px-4 py-2 text-sm font-medium transition',
                       active ? 'bg-stone-900 text-white' : 'bg-white/70 text-stone-700 hover:bg-white'
@@ -403,7 +423,12 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
                   ))}
                 </div>
                 <div className="mt-4">
-                  <Button variant="secondary" size="sm" onClick={() => handleRotateBroker(broker)}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    aria-label={`rotate-broker-${broker.id}`}
+                    onClick={() => handleRotateBroker(broker)}
+                  >
                     Rotate mode
                   </Button>
                 </div>
@@ -500,7 +525,7 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
         </div>
       </section>
 
-      <section className="glass-card space-y-5">
+      <section className="glass-card space-y-5" aria-live="polite">
         <SectionHeading eyebrow="Event trace" title="Live control-plane audit" />
         <div className="grid gap-3 md:grid-cols-2">
           {timeline.map((item) => (

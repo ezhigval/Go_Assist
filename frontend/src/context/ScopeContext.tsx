@@ -194,14 +194,18 @@ interface ScopeProviderProps {
   initialUser?: User | null;
   apiClient?: {
     getScopes: () => Promise<Scope[]>;
+    getScopesSnapshot?: () => Scope[];
     createScope: (scope: Omit<Scope, 'metadata'>) => Promise<Scope>;
     deleteScope: (scopeId: string) => Promise<void>;
   };
 }
 
 export function ScopeProvider({ children, initialUser = null, apiClient }: ScopeProviderProps) {
+  const initialScopes = getInitialScopes(apiClient);
   const [state, dispatch] = useReducer(scopeReducer, {
     ...initialState,
+    activeScope: initialScopes[0] ?? defaultScope,
+    availableScopes: initialScopes,
     user: initialUser,
   });
 
@@ -298,9 +302,9 @@ export function ScopeProvider({ children, initialUser = null, apiClient }: Scope
       );
       dispatch({ type: 'SET_AVAILABLE_SCOPES', payload: updatedScopes });
       
-      // If we deleted the active scope, switch to default
+      // Если удалили активный scope, переключаемся на первый доступный preset.
       if (state.activeScope && `${state.activeScope.segment}:${state.activeScope.tags.join(',')}` === scopeId) {
-        dispatch({ type: 'SET_ACTIVE_SCOPE', payload: defaultScope });
+        dispatch({ type: 'SET_ACTIVE_SCOPE', payload: updatedScopes[0] ?? defaultScope });
       }
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Failed to delete scope' });
@@ -392,6 +396,15 @@ function isValidScope(scope: unknown): scope is Scope {
     Array.isArray(scope.tags) &&
     scope.tags.every((tag: unknown) => typeof tag === 'string')
   );
+}
+
+function getInitialScopes(apiClient?: ScopeProviderProps['apiClient']): Scope[] {
+  const snapshotScopes = apiClient?.getScopesSnapshot?.() ?? [];
+  const validScopes = snapshotScopes.filter(isValidScope);
+  if (validScopes.length > 0) {
+    return validScopes;
+  }
+  return [defaultScope];
 }
 
 function arraysEqual<T>(a: T[], b: T[]): boolean {

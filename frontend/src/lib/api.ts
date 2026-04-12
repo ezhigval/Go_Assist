@@ -248,6 +248,14 @@ function rotateBrokerMode(mode: BrokerMode): { mode: BrokerMode; status: BrokerS
 const defaultScopesResponse = clone(defaultScopes);
 
 export const api = {
+  getScopesSnapshot(): Scope[] {
+    return clone(readLocalSnapshot().scopes);
+  },
+
+  getControlPlaneSnapshot(): ControlPlaneSnapshot {
+    return clone(readLocalSnapshot());
+  },
+
   async healthCheck(): Promise<{ ok: boolean }> {
     try {
       await request<unknown>('/health');

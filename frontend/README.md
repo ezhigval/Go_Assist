@@ -20,6 +20,16 @@ Modulr Frontend is a comprehensive React-based application that runs on multiple
 - scope presets и quick tags с local persistence fallback;
 - `npm run verify` покрывает type-check, vitest и production build.
 
+## Минимальные UX-критерии Web Control Plane
+
+Для `v2.0` web-слоя зафиксирован минимальный UX contract:
+- первый экран без прокрутки показывает `health`, `platform`, `active scope` и ключевые runtime metrics;
+- first-screen snapshot поднимается синхронно из local control-plane state, чтобы operator flow не зависел от network round-trip;
+- все мутационные действия имеют явные текстовые/ARIA-имена: add scope, rotate broker, toggle module, rotate plugin;
+- локальный dev-режим остаётся операбельным без backend: broker/module/plugin/scope изменения пишутся в local snapshot;
+- оператор получает мгновенную обратную связь через live event trace (`Control plane booted`, `Config updated`);
+- критерии закреплены тестами в `src/test/control-plane.spec.tsx` и входят в `npm run verify`.
+
 ## Architecture
 
 ### Core Principles
