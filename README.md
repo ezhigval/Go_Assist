@@ -40,7 +40,7 @@ Data Layer (PostgreSQL | Redis | Vector DB | Local Storage)
 - `core/distributed/` - foundation для broker-backed lanes и consumer groups
 - `core/orchestrator/` - Валидация решений AI
 - `core/aiengine/` - Реестры моделей и маршрутизация
-- `plugins/` - versioned registry для process/WASM plugin manifests
+- `plugins/` - versioned registry для process/WASM plugin manifests с entry/permission guardrails
 - Domain модули - Изолированная бизнес-логика
 
 **Документация:**

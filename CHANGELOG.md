@@ -8,6 +8,12 @@
 
 ---
 
+## [2026-04-12] v2.0: plugin registry security audit
+
+- [2026-04-12] | `plugins/registry.go`, `plugins/registry_test.go`, `ROADMAP.md`, `ARCHITECTURE.md`, `README.md` | Plugin manifest contract усилен security-guardrails: registry режет absolute `entry`, неизвестные permissions и небезопасные `wasm+grpc` комбинации до фактического запуска runner; validation-пункт v2.0 по security audit закрыт | §3 E3, §5 V1, §7
+
+---
+
 ## [2026-04-12] v2.0: broker load scenario baseline
 
 - [2026-04-12] | `core/distributed/broker_test.go`, `ROADMAP.md` | Для broker foundation добавлен high-volume load scenario: 4096 `Publish` по трём consumer groups, проверка fanout, round-robin баланса и отсутствия delivery loss/failures; validation-пункт v2.0 закрыт в roadmap | §4 C1, §7

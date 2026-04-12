@@ -119,7 +119,7 @@
 
 - Вертикально: пулы БД, кэш.  
 - Горизонтально: вынести шину в broker contract (`core/distributed`) и раскладывать обработку по consumer groups / stateless-воркерам.  
-- Расширяемость: versioned plugin manifests (`plugins/`) описывают runtime `process|wasm`, entrypoint, protocol и capability map до фактической загрузки sandbox/process runner.
+- Расширяемость: versioned plugin manifests (`plugins/`) описывают runtime `process|wasm`, entrypoint, protocol и capability map до фактической загрузки sandbox/process runner; registry уже режет absolute entry paths, неизвестные permissions и небезопасные runtime/protocol комбинации.
 - Продуктово: **настройка scope/тегов в UI** «в пару кликов» через web control plane без смены кода модулей.
 
 ---

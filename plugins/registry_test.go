@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -64,6 +65,71 @@ func TestLoadManifestRejectsRelativeEscape(t *testing.T) {
 	}
 }
 
+func TestLoadManifestRejectsAbsoluteEntryPath(t *testing.T) {
+	dir := t.TempDir()
+	absoluteEntry := filepath.Join(dir, "bin", "absolute-plugin")
+	manifestPath := filepath.Join(dir, "absolute.plugin.json")
+	if err := os.WriteFile(manifestPath, []byte(fmt.Sprintf(`{
+		"id": "absolute-plugin",
+		"version": "1.0.0",
+		"runtime": "process",
+		"protocol": "stdio",
+		"entry": %q,
+		"capabilities": [
+			{"module": "knowledge", "actions": ["save_note"]}
+		]
+	}`, absoluteEntry)), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	_, err := LoadManifest(manifestPath)
+	if err == nil {
+		t.Fatal("LoadManifest returned nil error, want ErrManifestEntryAbsolute")
+	}
+	if !errorsIs(err, ErrManifestEntryAbsolute) {
+		t.Fatalf("LoadManifest error = %v, want ErrManifestEntryAbsolute", err)
+	}
+}
+
+func TestParseManifestRejectsUnsupportedPermission(t *testing.T) {
+	_, err := ParseManifest([]byte(`{
+		"id": "unsafe-plugin",
+		"version": "1.0.0",
+		"runtime": "process",
+		"protocol": "grpc",
+		"entry": "bin/unsafe-plugin",
+		"permissions": ["root.exec"],
+		"capabilities": [
+			{"module": "finance", "actions": ["sync"]}
+		]
+	}`))
+	if err == nil {
+		t.Fatal("ParseManifest returned nil error, want unsupported permission")
+	}
+	if got := err.Error(); got != `plugins: unsupported permission "root.exec"` {
+		t.Fatalf("ParseManifest error = %q, want unsupported permission", got)
+	}
+}
+
+func TestParseManifestRejectsWASMGRPCProtocol(t *testing.T) {
+	_, err := ParseManifest([]byte(`{
+		"id": "tracker-plan",
+		"version": "1.0.0",
+		"runtime": "wasm",
+		"protocol": "grpc",
+		"entry": "tracker-plan.wasm",
+		"capabilities": [
+			{"module": "tracker", "actions": ["create_task"]}
+		]
+	}`))
+	if err == nil {
+		t.Fatal("ParseManifest returned nil error, want wasm protocol validation")
+	}
+	if got := err.Error(); got != `plugins: wasm manifest "tracker-plan" must use stdio protocol when protocol is set` {
+		t.Fatalf("ParseManifest error = %q, want wasm protocol validation", got)
+	}
+}
+
 func TestRegistryResolveReturnsMatchingVersionedPlugins(t *testing.T) {
 	registry := NewRegistry()
 
@@ -116,6 +182,31 @@ func TestRegistryResolveReturnsMatchingVersionedPlugins(t *testing.T) {
 	}
 	if list[0].Key() != "finance-sync@1.0.0" || list[1].Key() != "tracker-plan@1.1.0" {
 		t.Fatalf("unexpected registry order: %+v", list)
+	}
+}
+
+func TestRegistryRegisterRejectsMismatchedEntryPath(t *testing.T) {
+	registry := NewRegistry()
+
+	err := registry.Register(LoadedManifest{
+		Manifest: Manifest{
+			ID:       "finance-sync",
+			Version:  "1.0.0",
+			Runtime:  RuntimeProcess,
+			Protocol: ProtocolGRPC,
+			Entry:    "bin/finance-sync",
+			Capabilities: []Capability{
+				{Module: "finance", Actions: []string{"create_transaction"}},
+			},
+		},
+		SourcePath: "/tmp/finance-sync.plugin.json",
+		EntryPath:  "/etc/finance-sync",
+	})
+	if err == nil {
+		t.Fatal("Register returned nil error, want ErrManifestEntryPathMismatch")
+	}
+	if !errorsIs(err, ErrManifestEntryPathMismatch) {
+		t.Fatalf("Register error = %v, want ErrManifestEntryPathMismatch", err)
 	}
 }
 

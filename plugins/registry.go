@@ -24,6 +24,10 @@ var (
 	ErrManifestRuntimeRequired = errors.New("plugins: manifest runtime required")
 	// ErrManifestEntryRequired означает отсутствие entrypoint.
 	ErrManifestEntryRequired = errors.New("plugins: manifest entry required")
+	// ErrManifestEntryAbsolute означает, что manifest использует абсолютный entry path.
+	ErrManifestEntryAbsolute = errors.New("plugins: absolute entry is not allowed")
+	// ErrManifestEntryPathMismatch означает, что resolved entry path не совпадает с manifest entry/source path.
+	ErrManifestEntryPathMismatch = errors.New("plugins: entry path mismatch")
 	// ErrManifestCapabilityRequired означает отсутствие capabilities.
 	ErrManifestCapabilityRequired = errors.New("plugins: manifest capability required")
 	// ErrManifestEntryEscapesDir означает, что относительный entry выходит за границы каталога manifest.
@@ -36,6 +40,12 @@ var (
 	manifestIDPattern      = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
 	manifestVersionPattern = regexp.MustCompile(`^v?\d+\.\d+\.\d+([\-+][0-9A-Za-z.\-]+)?$`)
 	capabilityNamePattern  = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+	allowedPermissions     = map[string]struct{}{
+		"env.read":         {},
+		"fs.read":          {},
+		"fs.write":         {},
+		"network.outbound": {},
+	}
 )
 
 // Runtime определяет способ исполнения плагина.
@@ -159,7 +169,7 @@ func LoadDir(dir string) ([]LoadedManifest, error) {
 
 // Register добавляет manifest в registry; ключ — `id@version`.
 func (r *Registry) Register(manifest LoadedManifest) error {
-	if err := validateManifest(manifest.Manifest); err != nil {
+	if err := validateLoadedManifest(manifest); err != nil {
 		return err
 	}
 	key := manifest.Key()
@@ -282,6 +292,9 @@ func validateManifest(manifest Manifest) error {
 			return fmt.Errorf("plugins: process manifest %q must declare protocol grpc|stdio", manifest.ID)
 		}
 	case RuntimeWASM:
+		if manifest.Protocol != "" && manifest.Protocol != ProtocolStdio {
+			return fmt.Errorf("plugins: wasm manifest %q must use stdio protocol when protocol is set", manifest.ID)
+		}
 		if !strings.HasSuffix(strings.ToLower(manifest.Entry), ".wasm") {
 			return fmt.Errorf("plugins: wasm manifest %q must point to .wasm entry", manifest.ID)
 		}
@@ -291,8 +304,16 @@ func validateManifest(manifest Manifest) error {
 	if manifest.Entry == "" {
 		return ErrManifestEntryRequired
 	}
+	if filepath.IsAbs(manifest.Entry) {
+		return ErrManifestEntryAbsolute
+	}
 	if len(manifest.Capabilities) == 0 {
 		return ErrManifestCapabilityRequired
+	}
+	for _, permission := range manifest.Permissions {
+		if _, ok := allowedPermissions[permission]; !ok {
+			return fmt.Errorf("plugins: unsupported permission %q", permission)
+		}
 	}
 	for _, capability := range manifest.Capabilities {
 		if !capabilityNamePattern.MatchString(capability.Module) {
@@ -315,12 +336,34 @@ func validateManifest(manifest Manifest) error {
 	return nil
 }
 
+func validateLoadedManifest(manifest LoadedManifest) error {
+	if err := validateManifest(manifest.Manifest); err != nil {
+		return err
+	}
+	if strings.TrimSpace(manifest.SourcePath) == "" || strings.TrimSpace(manifest.EntryPath) == "" {
+		return nil
+	}
+
+	absSource, err := filepath.Abs(manifest.SourcePath)
+	if err != nil {
+		return fmt.Errorf("plugins: abs source path: %w", err)
+	}
+	expectedEntry, err := resolveEntryPath(filepath.Dir(absSource), manifest.Entry)
+	if err != nil {
+		return err
+	}
+	if filepath.Clean(manifest.EntryPath) != expectedEntry {
+		return ErrManifestEntryPathMismatch
+	}
+	return nil
+}
+
 func resolveEntryPath(baseDir, entry string) (string, error) {
 	if strings.TrimSpace(entry) == "" {
 		return "", ErrManifestEntryRequired
 	}
 	if filepath.IsAbs(entry) {
-		return filepath.Clean(entry), nil
+		return "", ErrManifestEntryAbsolute
 	}
 	baseDir, err := filepath.Abs(baseDir)
 	if err != nil {
