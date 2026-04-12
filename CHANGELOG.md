@@ -8,6 +8,12 @@
 
 ---
 
+## [2026-04-12] v2.0: broker load scenario baseline
+
+- [2026-04-12] | `core/distributed/broker_test.go`, `ROADMAP.md` | Для broker foundation добавлен high-volume load scenario: 4096 `Publish` по трём consumer groups, проверка fanout, round-robin баланса и отсутствия delivery loss/failures; validation-пункт v2.0 закрыт в roadmap | §4 C1, §7
+
+---
+
 ## [2026-04-12] v1.5: runtime access policy for authenticated dispatch
 
 - [2026-04-12] | `events/access_policy.go`, `events/access_policy_test.go`, `auth/service.go`, `auth/service_test.go`, `core/orchestrator/orchestrator.go`, `core/orchestrator/pipeline.go`, `core/orchestrator/pipeline_test.go`, `app/runtime_test.go`, `telegram/modulr_ingress.go`, `telegram/modulr_ingress_test.go`, `README.md`, `ROADMAP.md`, `ARCHITECTURE.md` | Введён runtime access-policy gate: общая матрица ролей и `auth_required` metadata, orchestrator теперь отклоняет AI decisions без авторизации или разрешённой роли, добавляет summary причин во fallback, а `telegram` transport помечает protected ingress до dispatch | §1 I4, §5 V2, §7
