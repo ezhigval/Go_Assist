@@ -99,6 +99,50 @@ func TestServiceCycleBrokerAndUpdateModulePlugin(t *testing.T) {
 	}
 }
 
+func TestServiceHealthStatusReflectsPersistenceAndPluginHydration(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	service, err := NewPersistentService(path)
+	if err != nil {
+		t.Fatalf("NewPersistentService returned error: %v", err)
+	}
+
+	dir := t.TempDir()
+	writeManifest(t, dir, "finance-sync.plugin.json", `{
+		"id": "finance-sync",
+		"version": "1.0.0",
+		"runtime": "process",
+		"protocol": "grpc",
+		"entry": "bin/finance-sync",
+		"capabilities": [
+			{"module": "finance", "actions": ["create_transaction"], "scopes": ["business"]}
+		]
+	}`)
+
+	if err := service.HydratePluginsFromDir(context.Background(), dir); err != nil {
+		t.Fatalf("HydratePluginsFromDir returned error: %v", err)
+	}
+
+	status, err := service.Health(context.Background())
+	if err != nil {
+		t.Fatalf("Health returned error: %v", err)
+	}
+	if !status.OK || !status.PersistEnabled {
+		t.Fatalf("health status = %+v, want ok+persistent", status)
+	}
+	if status.Mode != "persistent" {
+		t.Fatalf("health mode = %q, want persistent", status.Mode)
+	}
+	if status.PersistPath != path {
+		t.Fatalf("health persist path = %q, want %q", status.PersistPath, path)
+	}
+	if status.PluginDir != dir || status.PluginManifests != 1 {
+		t.Fatalf("health plugin fields = %+v, want dir=%q count=1", status, dir)
+	}
+	if status.UpdatedAt == "" {
+		t.Fatal("health updated_at is empty")
+	}
+}
+
 func TestPersistentServiceReloadsMutationsFromDisk(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "state", "controlplane.json")
 	service, err := NewPersistentService(path)

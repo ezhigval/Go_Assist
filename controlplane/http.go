@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
 type httpHandler struct {
@@ -52,14 +51,12 @@ func (h *httpHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 		writeMethodNotAllowed(w)
 		return
 	}
-	if err := h.api.Health(r.Context()); err != nil {
+	status, err := h.api.Health(r.Context())
+	if err != nil {
 		writeError(w, http.StatusServiceUnavailable, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":         true,
-		"checked_at": time.Now().UTC().Format(time.RFC3339),
-	})
+	writeJSON(w, http.StatusOK, status)
 }
 
 func (h *httpHandler) handleScopes(w http.ResponseWriter, r *http.Request) {

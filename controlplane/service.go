@@ -41,6 +41,8 @@ type Service struct {
 	mu          sync.RWMutex
 	snapshot    Snapshot
 	persistPath string
+	pluginDir   string
+	pluginCount int
 }
 
 // NewService создаёт control-plane projection со snapshot по умолчанию.
@@ -82,6 +84,10 @@ func (s *Service) HydratePluginsFromDir(ctx context.Context, dir string) error {
 		return fmt.Errorf("controlplane: hydrate plugins from %q: %w", dir, err)
 	}
 	if len(loaded) == 0 {
+		s.mu.Lock()
+		s.pluginDir = dir
+		s.pluginCount = 0
+		s.mu.Unlock()
 		return nil
 	}
 
@@ -90,15 +96,37 @@ func (s *Service) HydratePluginsFromDir(ctx context.Context, dir string) error {
 
 	next := cloneSnapshot(s.snapshot)
 	next.Plugins = mergePluginsWithManifests(next.Plugins, loaded)
-	return s.commitLocked(next)
+	if err := s.commitLocked(next); err != nil {
+		return err
+	}
+	s.pluginDir = dir
+	s.pluginCount = len(loaded)
+	return nil
 }
 
 // Health подтверждает готовность in-memory projection.
-func (s *Service) Health(ctx context.Context) error {
+func (s *Service) Health(ctx context.Context) (HealthStatus, error) {
 	if ctx.Err() != nil {
-		return ctx.Err()
+		return HealthStatus{}, ctx.Err()
 	}
-	return nil
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	mode := "memory"
+	if s.persistPath != "" {
+		mode = "persistent"
+	}
+
+	return HealthStatus{
+		OK:              true,
+		CheckedAt:       time.Now().UTC().Format(time.RFC3339),
+		Mode:            mode,
+		PersistEnabled:  s.persistPath != "",
+		PersistPath:     s.persistPath,
+		PluginDir:       s.pluginDir,
+		PluginManifests: s.pluginCount,
+		UpdatedAt:       s.snapshot.UpdatedAt,
+	}, nil
 }
 
 // Snapshot возвращает полный control-plane snapshot.

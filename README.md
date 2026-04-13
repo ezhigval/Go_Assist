@@ -198,6 +198,7 @@ npm run dev:telegram
 ```bash
 go run ./cmd/controlplane
 # Поднимает /api/health, /api/scopes, /api/control-plane на :8080
+# /api/health возвращает operator status: mode, snapshot freshness, persist path, plugin manifest metadata
 # frontend по умолчанию ходит в этот адрес через VITE_API_BASE_URL=http://localhost:8080/api
 # По умолчанию сохраняет operator state в data/controlplane/snapshot.json
 # По умолчанию читает demo plugin manifests из plugins/manifests
