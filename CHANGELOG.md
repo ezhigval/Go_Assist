@@ -26,6 +26,12 @@
 
 ---
 
+## [2026-04-13] v2.0: plugin manifest hydration for control plane
+
+- [2026-04-13] | `controlplane/service.go`, `controlplane/service_test.go`, `cmd/controlplane/main.go`, `README.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `frontend/README.md` | `Control plane` начал подтягивать plugin slice из реальных `*.plugin.json`: startup может гидратировать snapshot через `CONTROL_PLANE_PLUGIN_DIR`, сохраняя operator status/override-поля и обновляя runtime metadata из manifest'ов | §2 A2, §3 E1, §5 V1, §7
+
+---
+
 ## [2026-04-12] v2.0: web control plane UX criteria
 
 - [2026-04-12] | `frontend/src/modules/control-plane/ControlPlaneDashboard.tsx`, `frontend/src/context/ScopeContext.tsx`, `frontend/src/lib/api.ts`, `frontend/src/test/control-plane.spec.tsx`, `frontend/README.md`, `ROADMAP.md` | Для web control plane зафиксирован и доведён до рабочего состояния минимальный UX contract: first-screen status summary гидратируется из локального snapshot без ожидания backend, mutating actions имеют явные имена, live feedback идёт через event trace, operator flow покрыт тестами; validation-пункт v2.0 по UX закрыт | §4 C1, §5 V1, §7

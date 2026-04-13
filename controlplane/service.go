@@ -7,10 +7,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"modulr/events"
+	"modulr/plugins"
 )
 
 var (
@@ -61,6 +65,32 @@ func NewPersistentService(path string) (*Service, error) {
 		snapshot:    snapshot,
 		persistPath: path,
 	}, nil
+}
+
+// HydratePluginsFromDir подтягивает plugin projection из реальных manifests.
+func (s *Service) HydratePluginsFromDir(ctx context.Context, dir string) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	dir = strings.TrimSpace(dir)
+	if dir == "" {
+		return nil
+	}
+
+	loaded, err := plugins.LoadDir(dir)
+	if err != nil {
+		return fmt.Errorf("controlplane: hydrate plugins from %q: %w", dir, err)
+	}
+	if len(loaded) == 0 {
+		return nil
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	next := cloneSnapshot(s.snapshot)
+	next.Plugins = mergePluginsWithManifests(next.Plugins, loaded)
+	return s.commitLocked(next)
 }
 
 // Health подтверждает готовность in-memory projection.
@@ -347,6 +377,126 @@ func saveSnapshotToFile(path string, snapshot Snapshot) error {
 		return fmt.Errorf("controlplane: replace snapshot %q: %w", path, err)
 	}
 	return nil
+}
+
+func mergePluginsWithManifests(current []PluginControl, manifests []plugins.LoadedManifest) []PluginControl {
+	if len(manifests) == 0 {
+		return clonePlugins(current)
+	}
+
+	out := clonePlugins(current)
+	indexByID := make(map[string]int, len(out))
+	for i, plugin := range out {
+		indexByID[plugin.ID] = i
+	}
+
+	latestByID := make(map[string]plugins.LoadedManifest, len(manifests))
+	for _, manifest := range manifests {
+		existing, ok := latestByID[manifest.ID]
+		if !ok || compareManifestVersion(manifest.Version, existing.Version) > 0 {
+			latestByID[manifest.ID] = manifest
+		}
+	}
+
+	ids := make([]string, 0, len(latestByID))
+	for id := range latestByID {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+
+	for _, id := range ids {
+		projected := pluginControlFromManifest(latestByID[id])
+		if index, ok := indexByID[id]; ok {
+			existing := out[index]
+			projected.Status = existing.Status
+			if existing.Description != "" {
+				projected.Description = existing.Description
+			}
+			out[index] = projected
+			continue
+		}
+		out = append(out, projected)
+	}
+
+	return out
+}
+
+func pluginControlFromManifest(manifest plugins.LoadedManifest) PluginControl {
+	capabilities := make([]PluginCapability, 0, len(manifest.Capabilities))
+	for _, capability := range manifest.Capabilities {
+		capabilities = append(capabilities, PluginCapability{
+			Module:  capability.Module,
+			Actions: cloneStrings(capability.Actions),
+			Scopes:  cloneStrings(capability.Scopes),
+		})
+	}
+
+	protocol := PluginProtocol(manifest.Protocol)
+	if protocol == "" {
+		protocol = PluginProtocolStdio
+	}
+
+	return PluginControl{
+		ID:           manifest.ID,
+		Version:      manifest.Version,
+		Runtime:      PluginRuntime(manifest.Runtime),
+		Protocol:     protocol,
+		Status:       PluginStatusStaged,
+		Entry:        manifest.Entry,
+		Description:  manifest.Description,
+		Capabilities: capabilities,
+	}
+}
+
+func compareManifestVersion(left, right string) int {
+	leftMajor, leftMinor, leftPatch := parseManifestVersion(left)
+	rightMajor, rightMinor, rightPatch := parseManifestVersion(right)
+
+	switch {
+	case leftMajor != rightMajor:
+		return compareInt(leftMajor, rightMajor)
+	case leftMinor != rightMinor:
+		return compareInt(leftMinor, rightMinor)
+	case leftPatch != rightPatch:
+		return compareInt(leftPatch, rightPatch)
+	default:
+		return strings.Compare(left, right)
+	}
+}
+
+func parseManifestVersion(value string) (int, int, int) {
+	value = strings.TrimSpace(strings.TrimPrefix(value, "v"))
+	if cut := strings.IndexAny(value, "-+"); cut >= 0 {
+		value = value[:cut]
+	}
+	parts := strings.Split(value, ".")
+	if len(parts) != 3 {
+		return 0, 0, 0
+	}
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, 0
+	}
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, 0, 0
+	}
+	patch, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return 0, 0, 0
+	}
+	return major, minor, patch
+}
+
+func compareInt(left, right int) int {
+	switch {
+	case left < right:
+		return -1
+	case left > right:
+		return 1
+	default:
+		return 0
+	}
 }
 
 func normalizeScope(scope ScopePreset) (ScopePreset, error) {

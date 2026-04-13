@@ -198,3 +198,84 @@ func TestPersistentServiceRejectsBrokenSnapshotFile(t *testing.T) {
 		t.Fatal("NewPersistentService returned nil error for broken snapshot")
 	}
 }
+
+func TestServiceHydratePluginsFromDirOverlaysRuntimeFieldsAndKeepsOperatorState(t *testing.T) {
+	dir := t.TempDir()
+	writeManifest(t, dir, "finance-sync.plugin.json", `{
+		"id": "finance-sync",
+		"version": "1.2.0",
+		"runtime": "process",
+		"protocol": "grpc",
+		"entry": "bin/finance-sync-v2",
+		"description": "manifest description",
+		"capabilities": [
+			{"module": "finance", "actions": ["create_transaction", "sync"], "scopes": ["business", "assets"]}
+		]
+	}`)
+	writeManifest(t, dir, "ops-audit.plugin.json", `{
+		"id": "ops-audit",
+		"version": "0.1.0",
+		"runtime": "process",
+		"protocol": "stdio",
+		"entry": "bin/ops-audit",
+		"description": "new audit plugin",
+		"capabilities": [
+			{"module": "knowledge", "actions": ["save_note"], "scopes": ["business"]}
+		]
+	}`)
+
+	service := NewService()
+	ctx := context.Background()
+	description := "operator override"
+	if _, err := service.UpdatePlugin(ctx, "finance-sync", PluginPatch{Description: &description}); err != nil {
+		t.Fatalf("UpdatePlugin returned error: %v", err)
+	}
+
+	if err := service.HydratePluginsFromDir(ctx, dir); err != nil {
+		t.Fatalf("HydratePluginsFromDir returned error: %v", err)
+	}
+
+	snapshot, err := service.Snapshot(ctx)
+	if err != nil {
+		t.Fatalf("Snapshot returned error: %v", err)
+	}
+
+	var financeSync PluginControl
+	var opsAudit PluginControl
+	for _, plugin := range snapshot.Plugins {
+		switch plugin.ID {
+		case "finance-sync":
+			financeSync = plugin
+		case "ops-audit":
+			opsAudit = plugin
+		}
+	}
+
+	if financeSync.Version != "1.2.0" || financeSync.Entry != "bin/finance-sync-v2" {
+		t.Fatalf("finance-sync runtime fields = %+v, want manifest overlay", financeSync)
+	}
+	if financeSync.Description != "operator override" {
+		t.Fatalf("finance-sync description = %q, want operator override", financeSync.Description)
+	}
+	if financeSync.Status != PluginStatusEnabled {
+		t.Fatalf("finance-sync status = %q, want enabled", financeSync.Status)
+	}
+	if len(financeSync.Capabilities) != 1 || len(financeSync.Capabilities[0].Scopes) != 2 || financeSync.Capabilities[0].Scopes[1] != "business" {
+		t.Fatalf("finance-sync capabilities = %+v, want hydrated manifest scopes", financeSync.Capabilities)
+	}
+
+	if opsAudit.ID == "" {
+		t.Fatal("ops-audit plugin was not appended from manifests")
+	}
+	if opsAudit.Status != PluginStatusStaged {
+		t.Fatalf("ops-audit status = %q, want staged", opsAudit.Status)
+	}
+}
+
+func writeManifest(t *testing.T, dir, name, body string) {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatalf("WriteFile(%s) returned error: %v", name, err)
+	}
+}
