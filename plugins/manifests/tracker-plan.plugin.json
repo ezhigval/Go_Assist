@@ -1,0 +1,17 @@
+{
+  "id": "tracker-plan",
+  "version": "1.1.0",
+  "display_name": "Tracker Plan",
+  "description": "Planned sandbox plugin for decomposition and milestone shaping.",
+  "runtime": "wasm",
+  "protocol": "stdio",
+  "entry": "tracker-plan/tracker-plan.wasm",
+  "permissions": ["fs.read"],
+  "capabilities": [
+    {
+      "module": "tracker",
+      "actions": ["create_task", "create_reminder"],
+      "scopes": ["personal", "work"]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "audit-mirror",
+  "version": "0.9.0",
+  "display_name": "Audit Mirror",
+  "description": "Mirror consumer for regulated audit trails before broker rollout.",
+  "runtime": "process",
+  "protocol": "stdio",
+  "entry": "audit-mirror/bin/audit-mirror",
+  "permissions": ["fs.read", "fs.write"],
+  "capabilities": [
+    {
+      "module": "knowledge",
+      "actions": ["save_note"],
+      "scopes": ["business"]
+    }
+  ]
+}

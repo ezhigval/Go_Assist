@@ -15,7 +15,7 @@ import (
 func main() {
 	addr := getEnv("CONTROL_PLANE_ADDR", ":8080")
 	statePath := getEnv("CONTROL_PLANE_STATE_PATH", "data/controlplane/snapshot.json")
-	pluginDir := getEnv("CONTROL_PLANE_PLUGIN_DIR", "")
+	pluginDir := getEnv("CONTROL_PLANE_PLUGIN_DIR", "plugins/manifests")
 	service, err := controlplane.NewPersistentService(statePath)
 	if err != nil {
 		log.Fatalf("controlplane: init service failed: %v", err)

@@ -1,0 +1,17 @@
+{
+  "id": "finance-sync",
+  "version": "1.0.0",
+  "display_name": "Finance Sync",
+  "description": "External ledger adapter for business finance dispatch.",
+  "runtime": "process",
+  "protocol": "grpc",
+  "entry": "finance-sync/bin/finance-sync",
+  "permissions": ["network.outbound", "fs.read"],
+  "capabilities": [
+    {
+      "module": "finance",
+      "actions": ["create_transaction", "sync"],
+      "scopes": ["business", "work"]
+    }
+  ]
+}

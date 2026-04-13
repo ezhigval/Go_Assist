@@ -210,6 +210,30 @@ func TestRegistryRegisterRejectsMismatchedEntryPath(t *testing.T) {
 	}
 }
 
+func TestLoadRepoDemoManifests(t *testing.T) {
+	manifests, err := LoadDir("manifests")
+	if err != nil {
+		t.Fatalf("LoadDir(manifests) returned error: %v", err)
+	}
+	if len(manifests) != 3 {
+		t.Fatalf("LoadDir(manifests) returned %d manifests, want 3", len(manifests))
+	}
+
+	registry := NewRegistry()
+	for _, manifest := range manifests {
+		if err := registry.Register(manifest); err != nil {
+			t.Fatalf("Register(%s) returned error: %v", manifest.Key(), err)
+		}
+	}
+
+	if matches := registry.Resolve("finance", "create_transaction"); len(matches) != 1 || matches[0].ID != "finance-sync" {
+		t.Fatalf("finance resolve = %+v, want finance-sync", matches)
+	}
+	if matches := registry.Resolve("tracker", "create_task"); len(matches) != 1 || matches[0].ID != "tracker-plan" {
+		t.Fatalf("tracker resolve = %+v, want tracker-plan", matches)
+	}
+}
+
 func errorsIs(err, target error) bool {
 	if err == nil || target == nil {
 		return err == target
