@@ -24,8 +24,9 @@ Modulr Frontend is a comprehensive React-based application that runs on multiple
 ## Минимальные UX-критерии Web Control Plane
 
 Для `v2.0` web-слоя зафиксирован минимальный UX contract:
-- первый экран без прокрутки показывает `health`, `platform`, `active scope` и ключевые runtime metrics;
+- первый экран без прокрутки показывает `health`, `platform`, `active scope`, backend-mode (`memory|persistent|fallback`) и ключевые runtime metrics;
 - first-screen snapshot поднимается синхронно из local control-plane state, чтобы operator flow не зависел от network round-trip;
+- `/api/health` прокидывает в UI `snapshot freshness`, `persist path`, `plugin manifest source/count`; при недоступности backend UI явно переключается в `local fallback`;
 - все мутационные действия имеют явные текстовые/ARIA-имена: add scope, rotate broker, toggle module, rotate plugin;
 - локальный dev-режим остаётся операбельным без backend: broker/module/plugin/scope изменения пишутся в local snapshot;
 - оператор получает мгновенную обратную связь через live event trace (`Control plane booted`, `Config updated`);
@@ -131,6 +132,8 @@ go run ./cmd/controlplane
 - `POST /api/control-plane/brokers/:id/cycle`
 
 Дефолтный `VITE_API_BASE_URL` уже указывает на `http://localhost:8080/api`, поэтому фронтенд начнёт использовать этот backend автоматически, а при недоступности сервиса останется на local fallback. Обе стороны стартуют из одного `controlplane/default_snapshot.json`, так что operator-данные не расходятся между fallback и реальным backend. Если backend поднят через `go run ./cmd/controlplane`, его мутации дополнительно сохраняются в `CONTROL_PLANE_STATE_PATH` (по умолчанию `data/controlplane/snapshot.json`), а plugin projection по умолчанию гидратируется из repo manifests `plugins/manifests`; при необходимости источник можно переопределить через `CONTROL_PLANE_PLUGIN_DIR`.
+
+На первом экране dashboard оператор видит не только бинарный статус backend, но и режим persistence, свежесть snapshot, путь к file-backed state и источник plugin manifests. Это позволяет отличать реальный backend от `local fallback` без чтения логов.
 
 ## Platform-Specific Development
 

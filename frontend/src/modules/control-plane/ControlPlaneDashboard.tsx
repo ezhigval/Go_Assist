@@ -7,6 +7,7 @@ import { cn } from '../../lib/utils';
 import { AllSegments, type EventName, type Segment } from '../../types/core';
 import type {
   BrokerLane,
+  ControlPlaneHealth,
   ControlPlaneSnapshot,
   ModuleControl,
   PluginControl,
@@ -14,7 +15,7 @@ import type {
 } from '../../types/control-plane';
 
 type RuntimePlatform = 'telegram' | 'web' | 'mobile' | 'desktop';
-type HealthState = 'checking' | 'online' | 'offline';
+type HealthBadgeState = 'online' | 'fallback';
 
 interface DashboardEvent {
   id: string;
@@ -26,16 +27,15 @@ interface DashboardEvent {
 
 const pluginStatusCycle: PluginStatus[] = ['disabled', 'staged', 'enabled'];
 
-const statusTone: Record<PluginStatus | BrokerLane['status'] | HealthState, string> = {
+const statusTone: Record<PluginStatus | BrokerLane['status'] | HealthBadgeState, string> = {
   enabled: 'bg-emerald-100 text-emerald-800',
   staged: 'bg-amber-100 text-amber-800',
   disabled: 'bg-stone-200 text-stone-700',
   ready: 'bg-emerald-100 text-emerald-800',
   planned: 'bg-sky-100 text-sky-800',
   degraded: 'bg-rose-100 text-rose-800',
-  checking: 'bg-stone-200 text-stone-700',
   online: 'bg-emerald-100 text-emerald-800',
-  offline: 'bg-rose-100 text-rose-800',
+  fallback: 'bg-amber-100 text-amber-800',
 };
 
 function parseTags(raw: string): string[] {
@@ -51,6 +51,22 @@ function parseTags(raw: string): string[] {
 
 function formatEventTime(timestamp: number): string {
   return new Date(timestamp).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatStatusTimestamp(timestamp: string): string {
+  if (!timestamp) {
+    return 'n/a';
+  }
+  const value = new Date(timestamp);
+  if (Number.isNaN(value.getTime())) {
+    return timestamp;
+  }
+  return value.toLocaleString([], {
+    month: 'short',
+    day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -81,7 +97,7 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
     isLoading,
   } = useScope();
   const [snapshot, setSnapshot] = useState<ControlPlaneSnapshot>(() => api.getControlPlaneSnapshot());
-  const [health, setHealth] = useState<HealthState>('checking');
+  const [health, setHealth] = useState<ControlPlaneHealth>(() => api.getHealthSnapshot());
   const [timeline, setTimeline] = useState<DashboardEvent[]>([]);
   const [newScopeSegment, setNewScopeSegment] = useState<Segment>('work');
   const [newScopeTags, setNewScopeTags] = useState('ops, priority');
@@ -109,7 +125,7 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
 
     const bootstrap = async () => {
       const snapshotPromise = api.getControlPlane();
-      const healthPromise = api.healthCheck().catch(() => ({ ok: false }));
+      const healthPromise = api.healthCheck();
 
       const nextSnapshot = await snapshotPromise;
       if (!alive) {
@@ -121,7 +137,7 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
       if (!alive) {
         return;
       }
-      setHealth(nextHealth.ok ? 'online' : 'offline');
+      setHealth(nextHealth);
     };
 
     const unsubscribeStartup = eventBus.on('v1.system.startup', (event) => {
@@ -239,6 +255,10 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
 
   const enabledModules = snapshot?.modules.filter((item) => item.enabled).length ?? 0;
   const enabledPlugins = snapshot?.plugins.filter((item) => item.status === 'enabled').length ?? 0;
+  const healthBadge: HealthBadgeState = health.ok ? 'online' : 'fallback';
+  const healthLabel = health.ok ? 'backend online' : 'local fallback';
+  const persistLabel = health.persistEnabled ? health.persistPath : 'memory only';
+  const pluginSourceLabel = health.pluginDir || 'seed only';
 
   return (
     <div className="space-y-8">
@@ -247,8 +267,8 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
           <div className="space-y-5">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
               Modulr v2.0
-              <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold tracking-[0.18em]', statusTone[health])}>
-                {health}
+              <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold tracking-[0.18em]', statusTone[healthBadge])}>
+                {healthLabel}
               </span>
             </div>
             <div className="space-y-3">
@@ -274,11 +294,43 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
               </div>
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-            <MetricCard label="Scope presets" value={availableScopes.length} hint="Persisted presets from control plane storage" />
-            <MetricCard label="Enabled modules" value={enabledModules} hint="Runtime actions currently admitted by UI control plane" />
-            <MetricCard label="Enabled plugins" value={enabledPlugins} hint="Versioned manifests staged or live for fanout" />
-            <MetricCard label="Broker lanes" value={snapshot?.brokers.length ?? 0} hint="Each lane defines topic, mode and consumer-group shape" />
+          <div className="space-y-3">
+            <div className="rounded-[26px] border border-white/70 bg-white/85 p-4 shadow-[0_18px_50px_rgba(53,31,15,0.08)]">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-xs uppercase tracking-[0.22em] text-stone-500">Operator backend</div>
+                <span className={cn('rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em]', statusTone[healthBadge])}>
+                  {health.mode}
+                </span>
+              </div>
+              <div className="mt-2 text-lg font-semibold text-stone-950">{healthLabel}</div>
+              <div className="mt-4 space-y-2 text-sm text-stone-600">
+                <div className="flex items-start justify-between gap-4">
+                  <span>Snapshot</span>
+                  <span className="text-right text-stone-900">{formatStatusTimestamp(health.snapshotUpdatedAt)}</span>
+                </div>
+                <div className="flex items-start justify-between gap-4">
+                  <span>Plugin manifests</span>
+                  <span className="text-right text-stone-900">{health.pluginManifests}</span>
+                </div>
+                <div className="flex items-start justify-between gap-4">
+                  <span>State path</span>
+                  <span className="max-w-[15rem] break-all text-right text-stone-900">{persistLabel}</span>
+                </div>
+                <div className="flex items-start justify-between gap-4">
+                  <span>Manifest source</span>
+                  <span className="max-w-[15rem] break-all text-right text-stone-900">{pluginSourceLabel}</span>
+                </div>
+              </div>
+              <div className="mt-3 text-xs uppercase tracking-[0.18em] text-stone-500">
+                Checked {formatStatusTimestamp(health.checkedAt)}
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              <MetricCard label="Scope presets" value={availableScopes.length} hint="Persisted presets from control plane storage" />
+              <MetricCard label="Enabled modules" value={enabledModules} hint="Runtime actions currently admitted by UI control plane" />
+              <MetricCard label="Enabled plugins" value={enabledPlugins} hint="Versioned manifests staged or live for fanout" />
+              <MetricCard label="Broker lanes" value={snapshot?.brokers.length ?? 0} hint="Each lane defines topic, mode and consumer-group shape" />
+            </div>
           </div>
         </div>
       </section>

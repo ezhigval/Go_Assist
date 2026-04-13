@@ -4,6 +4,7 @@ import type {
   BrokerLane,
   BrokerMode,
   BrokerStatus,
+  ControlPlaneHealth,
   ControlPlaneSnapshot,
   ModuleControl,
   PluginControl,
@@ -12,6 +13,16 @@ import type {
 const API_BASE_URL = import.meta.env['VITE_API_BASE_URL'] || 'http://localhost:8080/api';
 const CONTROL_PLANE_STORAGE_KEY = 'modulr-control-plane-v2';
 type ControlPlaneSeed = Omit<ControlPlaneSnapshot, 'updatedAt'>;
+type ControlPlaneHealthResponse = {
+  ok: boolean;
+  checked_at: string;
+  mode: 'memory' | 'persistent';
+  persist_enabled: boolean;
+  persist_path?: string;
+  plugin_dir?: string;
+  plugin_manifests: number;
+  snapshot_updated_at: string;
+};
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -119,6 +130,31 @@ function findScopeIndex(scopes: Scope[], id: string): number {
   return scopes.findIndex((scope) => scopeKey(scope) === id);
 }
 
+function buildFallbackHealth(snapshot: ControlPlaneSnapshot): ControlPlaneHealth {
+  return {
+    ok: false,
+    checkedAt: new Date().toISOString(),
+    mode: 'fallback',
+    persistEnabled: false,
+    pluginDir: '',
+    pluginManifests: snapshot.plugins.length,
+    snapshotUpdatedAt: snapshot.updatedAt,
+  };
+}
+
+function mapHealthResponse(response: ControlPlaneHealthResponse): ControlPlaneHealth {
+  return {
+    ok: response.ok,
+    checkedAt: response.checked_at,
+    mode: response.mode,
+    persistEnabled: response.persist_enabled,
+    pluginManifests: response.plugin_manifests,
+    snapshotUpdatedAt: response.snapshot_updated_at,
+    ...(response.persist_path ? { persistPath: response.persist_path } : {}),
+    ...(response.plugin_dir ? { pluginDir: response.plugin_dir } : {}),
+  };
+}
+
 function rotateBrokerMode(mode: BrokerMode): { mode: BrokerMode; status: BrokerStatus } {
   switch (mode) {
     case 'memory':
@@ -138,16 +174,20 @@ export const api = {
     return clone(readLocalSnapshot().scopes);
   },
 
+  getHealthSnapshot(): ControlPlaneHealth {
+    return buildFallbackHealth(readLocalSnapshot());
+  },
+
   getControlPlaneSnapshot(): ControlPlaneSnapshot {
     return clone(readLocalSnapshot());
   },
 
-  async healthCheck(): Promise<{ ok: boolean }> {
+  async healthCheck(): Promise<ControlPlaneHealth> {
     try {
-      await request<unknown>('/health');
-      return { ok: true };
+      const response = await request<ControlPlaneHealthResponse>('/health');
+      return mapHealthResponse(response);
     } catch {
-      return { ok: false };
+      return buildFallbackHealth(readLocalSnapshot());
     }
   },
 

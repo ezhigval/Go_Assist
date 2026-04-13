@@ -38,6 +38,7 @@ export interface ModuleControl {
 export type PluginRuntime = 'process' | 'wasm';
 export type PluginProtocol = 'grpc' | 'stdio';
 export type PluginStatus = 'enabled' | 'staged' | 'disabled';
+export type ControlPlaneHealthMode = 'memory' | 'persistent' | 'fallback';
 
 export interface PluginCapability {
   module: string;
@@ -54,6 +55,17 @@ export interface PluginControl {
   entry: string;
   description: string;
   capabilities: PluginCapability[];
+}
+
+export interface ControlPlaneHealth {
+  ok: boolean;
+  checkedAt: string;
+  mode: ControlPlaneHealthMode;
+  persistEnabled: boolean;
+  persistPath?: string;
+  pluginDir?: string;
+  pluginManifests: number;
+  snapshotUpdatedAt: string;
 }
 
 export interface ControlPlaneSnapshot {
