@@ -316,6 +316,65 @@ func TestServiceHydratePluginsFromDirOverlaysRuntimeFieldsAndKeepsOperatorState(
 	}
 }
 
+func TestServiceReloadPluginsUsesConfiguredManifestSource(t *testing.T) {
+	dir := t.TempDir()
+	writeManifest(t, dir, "finance-sync.plugin.json", `{
+		"id": "finance-sync",
+		"version": "1.0.0",
+		"runtime": "process",
+		"protocol": "grpc",
+		"entry": "bin/finance-sync-v1",
+		"capabilities": [
+			{"module": "finance", "actions": ["create_transaction"], "scopes": ["business"]}
+		]
+	}`)
+
+	service := NewService()
+	ctx := context.Background()
+	if err := service.HydratePluginsFromDir(ctx, dir); err != nil {
+		t.Fatalf("HydratePluginsFromDir returned error: %v", err)
+	}
+
+	writeManifest(t, dir, "finance-sync.plugin.json", `{
+		"id": "finance-sync",
+		"version": "1.3.0",
+		"runtime": "process",
+		"protocol": "grpc",
+		"entry": "bin/finance-sync-v2",
+		"description": "reload check",
+		"capabilities": [
+			{"module": "finance", "actions": ["create_transaction", "reconcile"], "scopes": ["assets", "business"]}
+		]
+	}`)
+
+	snapshot, err := service.ReloadPlugins(ctx)
+	if err != nil {
+		t.Fatalf("ReloadPlugins returned error: %v", err)
+	}
+
+	var financeSync PluginControl
+	for _, plugin := range snapshot.Plugins {
+		if plugin.ID == "finance-sync" {
+			financeSync = plugin
+			break
+		}
+	}
+	if financeSync.Version != "1.3.0" || financeSync.Entry != "bin/finance-sync-v2" {
+		t.Fatalf("finance-sync after reload = %+v, want refreshed runtime metadata", financeSync)
+	}
+	if len(financeSync.Capabilities) != 1 || len(financeSync.Capabilities[0].Actions) != 2 {
+		t.Fatalf("finance-sync capabilities after reload = %+v, want manifest refresh", financeSync.Capabilities)
+	}
+
+	status, err := service.Health(ctx)
+	if err != nil {
+		t.Fatalf("Health returned error: %v", err)
+	}
+	if status.PluginDir != dir || status.PluginManifests != 1 {
+		t.Fatalf("health after reload = %+v, want dir=%q count=1", status, dir)
+	}
+}
+
 func writeManifest(t *testing.T, dir, name, body string) {
 	t.Helper()
 	path := filepath.Join(dir, name)

@@ -319,6 +319,17 @@ export const api = {
     }
   },
 
+  async reloadPluginManifests(): Promise<ControlPlaneSnapshot> {
+    try {
+      const remote = await request<ControlPlaneSnapshot>('/control-plane/plugins/reload', {
+        method: 'POST',
+      });
+      return writeLocalSnapshot(remote);
+    } catch {
+      return readLocalSnapshot();
+    }
+  },
+
   async updateModule(moduleId: string, patch: Partial<ModuleControl>): Promise<ModuleControl> {
     try {
       const remote = await request<ModuleControl>(`/control-plane/modules/${encodeURIComponent(moduleId)}`, {

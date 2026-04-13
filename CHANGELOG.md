@@ -50,6 +50,10 @@
 
 - [2026-04-13] | `frontend/src/modules/control-plane/ControlPlaneDashboard.tsx`, `frontend/src/test/control-plane.spec.tsx`, `frontend/README.md`, `README.md`, `ROADMAP.md` | Web control plane перестал быть только обзорным: module cards теперь сохраняют `dispatchMode`, `consumerGroup`, `allowedScopes`, `tags`, `latencyBudgetMs`, а plugin cards — `description` и `capabilities`; всё идёт через уже существующий backend/local fallback patch-contract и покрыто frontend-тестами | §4 C1, §5 V1, §7
 
+## [2026-04-13] v2.0: runtime plugin manifest reload in control plane
+
+- [2026-04-13] | `controlplane/api.go`, `controlplane/http.go`, `controlplane/service.go`, `controlplane/*_test.go`, `frontend/src/lib/api.ts`, `frontend/src/modules/control-plane/ControlPlaneDashboard.tsx`, `frontend/src/test/control-plane.spec.tsx`, `README.md`, `frontend/README.md`, `ROADMAP.md` | `Control plane` получил runtime reload plugin manifests без рестарта backend: `POST /api/control-plane/plugins/reload` переиспользует уже настроенный manifest source, dashboard даёт явную operator-кнопку refresh, а snapshot и diagnostics обновляются в UI сразу после reread | §2 A2, §4 C1, §5 V1, §7
+
 ---
 
 ## [2026-04-12] v2.0: web control plane UX criteria

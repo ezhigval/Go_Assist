@@ -203,6 +203,7 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
   const [timeline, setTimeline] = useState<DashboardEvent[]>([]);
   const [newScopeSegment, setNewScopeSegment] = useState<Segment>('work');
   const [newScopeTags, setNewScopeTags] = useState('ops, priority');
+  const [isReloadingPlugins, setIsReloadingPlugins] = useState(false);
 
   const refreshSnapshot = async () => {
     const nextSnapshot = await api.getControlPlane();
@@ -378,6 +379,24 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
     });
   };
 
+  const handleReloadPluginManifests = async () => {
+    setIsReloadingPlugins(true);
+    try {
+      const nextSnapshot = await api.reloadPluginManifests();
+      const nextHealth = await api.healthCheck();
+      setSnapshot(nextSnapshot);
+      setHealth(nextHealth);
+      eventBus.emit('v1.user.preferences.updated', {
+        entity: 'plugin_manifests',
+        action: 'reloaded',
+        source: nextHealth.pluginDir || 'local-fallback',
+        manifests: nextHealth.pluginManifests,
+      });
+    } finally {
+      setIsReloadingPlugins(false);
+    }
+  };
+
   const handleSavePlugin = async (plugin: PluginControl, patch: Partial<PluginControl>) => {
     const nextPlugin = await api.updatePlugin(plugin.id, patch);
     setSnapshot((current) => {
@@ -467,6 +486,18 @@ export function ControlPlaneDashboard({ platform }: ControlPlaneDashboardProps) 
               </div>
               <div className="mt-3 text-xs uppercase tracking-[0.18em] text-stone-500">
                 Checked {formatStatusTimestamp(health.checkedAt)}
+              </div>
+              <div className="mt-4">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  aria-label="reload-plugin-manifests"
+                  onClick={handleReloadPluginManifests}
+                  loading={isReloadingPlugins}
+                  disabled={!health.ok || !health.pluginDir}
+                >
+                  Reload manifests
+                </Button>
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">

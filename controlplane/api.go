@@ -18,6 +18,7 @@ type HealthStatus struct {
 type API interface {
 	Health(ctx context.Context) (HealthStatus, error)
 	Snapshot(ctx context.Context) (Snapshot, error)
+	ReloadPlugins(ctx context.Context) (Snapshot, error)
 	ListScopes(ctx context.Context) ([]ScopePreset, error)
 	CreateScope(ctx context.Context, scope ScopePreset) (ScopePreset, error)
 	UpdateScopeTags(ctx context.Context, id string, tags []string) (ScopePreset, error)

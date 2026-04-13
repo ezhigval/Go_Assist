@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -57,6 +58,58 @@ func TestHTTPHandlerMutatesScopeModulePluginAndBroker(t *testing.T) {
 	recorder = performRequest(t, handler, http.MethodDelete, "/api/scopes/"+ScopeKey(created), nil)
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf("DELETE scope status = %d, want 204", recorder.Code)
+	}
+}
+
+func TestHTTPHandlerReloadsPluginManifests(t *testing.T) {
+	dir := t.TempDir()
+	writeManifest(t, dir, "finance-sync.plugin.json", `{
+		"id": "finance-sync",
+		"version": "1.0.0",
+		"runtime": "process",
+		"protocol": "grpc",
+		"entry": "bin/finance-sync-v1",
+		"capabilities": [
+			{"module": "finance", "actions": ["create_transaction"], "scopes": ["business"]}
+		]
+	}`)
+
+	service := NewService()
+	if err := service.HydratePluginsFromDir(context.Background(), dir); err != nil {
+		t.Fatalf("HydratePluginsFromDir returned error: %v", err)
+	}
+
+	writeManifest(t, dir, "finance-sync.plugin.json", `{
+		"id": "finance-sync",
+		"version": "2.0.0",
+		"runtime": "process",
+		"protocol": "grpc",
+		"entry": "bin/finance-sync-v2",
+		"capabilities": [
+			{"module": "finance", "actions": ["create_transaction", "reconcile"], "scopes": ["assets", "business"]}
+		]
+	}`)
+
+	handler := NewHandler(service)
+	recorder := performRequest(t, handler, http.MethodPost, "/api/control-plane/plugins/reload", nil)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("POST /api/control-plane/plugins/reload status = %d, want 200", recorder.Code)
+	}
+
+	var snapshot Snapshot
+	if err := json.Unmarshal(recorder.Body.Bytes(), &snapshot); err != nil {
+		t.Fatalf("decode snapshot returned error: %v", err)
+	}
+
+	var financeSync PluginControl
+	for _, plugin := range snapshot.Plugins {
+		if plugin.ID == "finance-sync" {
+			financeSync = plugin
+			break
+		}
+	}
+	if financeSync.Version != "2.0.0" || financeSync.Entry != "bin/finance-sync-v2" {
+		t.Fatalf("finance-sync after reload = %+v, want refreshed manifest metadata", financeSync)
 	}
 }
 

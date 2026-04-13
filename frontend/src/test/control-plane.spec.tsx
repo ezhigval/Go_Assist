@@ -119,6 +119,77 @@ describe('ControlPlaneDashboard', () => {
     expect(await screen.findAllByText('backend online')).toHaveLength(2);
     expect(screen.getByText('/tmp/controlplane.json')).toBeInTheDocument();
     expect(screen.getByText('plugins/manifests')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'reload-plugin-manifests' })).toBeEnabled();
+  });
+
+  it('reloads plugin manifests from backend without restarting dashboard', async () => {
+    const user = userEvent.setup();
+    const baseSnapshot = api.getControlPlaneSnapshot();
+    const reloadedSnapshot = {
+      ...baseSnapshot,
+      updatedAt: '2026-04-13T11:25:00Z',
+      plugins: baseSnapshot.plugins.map((plugin) =>
+        plugin.id === 'finance-sync'
+          ? { ...plugin, version: '2.0.0', entry: 'bin/finance-sync-v2' }
+          : plugin
+      ),
+    };
+
+    let reloads = 0;
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? 'GET';
+      if (url.endsWith('/control-plane/plugins/reload') && method === 'POST') {
+        reloads += 1;
+        return new Response(JSON.stringify(reloadedSnapshot), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (url.endsWith('/control-plane')) {
+        return new Response(JSON.stringify(baseSnapshot), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (url.endsWith('/health')) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            checked_at: reloads > 0 ? '2026-04-13T11:26:00Z' : '2026-04-13T11:22:33Z',
+            mode: 'persistent',
+            persist_enabled: true,
+            persist_path: '/tmp/controlplane.json',
+            plugin_dir: 'plugins/manifests',
+            plugin_manifests: reloads > 0 ? 4 : 3,
+            snapshot_updated_at: reloads > 0 ? '2026-04-13T11:25:00Z' : baseSnapshot.updatedAt,
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+      throw new Error(`unexpected request: ${method} ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <ScopeProvider apiClient={api}>
+        <ControlPlaneDashboard platform="web" />
+      </ScopeProvider>
+    );
+
+    const reloadButton = await screen.findByRole('button', { name: 'reload-plugin-manifests' });
+    await waitFor(() => expect(reloadButton).toBeEnabled());
+    await user.click(reloadButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('v2.0.0')).toBeInTheDocument();
+      expect(screen.getByText('bin/finance-sync-v2')).toBeInTheDocument();
+    });
+
+    expect(await screen.findByText('Config updated')).toBeInTheDocument();
   });
 
   it('persists plugin settings edits into local control plane state', async () => {
@@ -166,6 +237,7 @@ describe('ControlPlaneDashboard', () => {
     expect(screen.getByRole('button', { name: 'save-module-tracker' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'rotate-plugin-finance-sync' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'save-plugin-finance-sync' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'reload-plugin-manifests' })).toBeInTheDocument();
     expect(await screen.findByText('Control plane booted')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'rotate-broker-runtime-core' }));

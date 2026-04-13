@@ -32,6 +32,8 @@ var (
 	ErrPluginNotFound = errors.New("controlplane: plugin not found")
 	// ErrBrokerNotFound означает неизвестный broker id.
 	ErrBrokerNotFound = errors.New("controlplane: broker not found")
+	// ErrPluginReloadUnavailable означает отсутствие manifest source для runtime reload.
+	ErrPluginReloadUnavailable = errors.New("controlplane: plugin reload unavailable")
 )
 
 var _ API = (*Service)(nil)
@@ -137,6 +139,24 @@ func (s *Service) Snapshot(ctx context.Context) (Snapshot, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return cloneSnapshot(s.snapshot), nil
+}
+
+// ReloadPlugins повторно гидратирует plugin projection из уже настроенного manifest source.
+func (s *Service) ReloadPlugins(ctx context.Context) (Snapshot, error) {
+	if ctx.Err() != nil {
+		return Snapshot{}, ctx.Err()
+	}
+
+	s.mu.RLock()
+	dir := strings.TrimSpace(s.pluginDir)
+	s.mu.RUnlock()
+	if dir == "" {
+		return Snapshot{}, ErrPluginReloadUnavailable
+	}
+	if err := s.HydratePluginsFromDir(ctx, dir); err != nil {
+		return Snapshot{}, err
+	}
+	return s.Snapshot(ctx)
 }
 
 // ListScopes возвращает scope presets в текущем порядке.

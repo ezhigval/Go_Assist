@@ -202,6 +202,7 @@ go run ./cmd/controlplane
 # frontend по умолчанию ходит в этот адрес через VITE_API_BASE_URL=http://localhost:8080/api
 # По умолчанию сохраняет operator state в data/controlplane/snapshot.json
 # По умолчанию читает demo plugin manifests из plugins/manifests
+# Поддерживает POST /api/control-plane/plugins/reload для runtime refresh manifests без рестарта backend
 # Можно переопределить через CONTROL_PLANE_STATE_PATH=/abs/or/relative/path.json
 # Можно переопределить manifest source через CONTROL_PLANE_PLUGIN_DIR=/path/to/manifests
 ```

@@ -35,6 +35,9 @@ func (h *httpHandler) register(mux *http.ServeMux, base string) {
 	mux.HandleFunc(base+"/control-plane", func(w http.ResponseWriter, r *http.Request) {
 		h.handleSnapshot(w, r)
 	})
+	mux.HandleFunc(base+"/control-plane/plugins/reload", func(w http.ResponseWriter, r *http.Request) {
+		h.handlePluginReload(w, r)
+	})
 	mux.HandleFunc(base+"/control-plane/modules/", func(w http.ResponseWriter, r *http.Request) {
 		h.handleModuleByID(w, r, base+"/control-plane/modules/")
 	})
@@ -126,6 +129,20 @@ func (h *httpHandler) handleSnapshot(w http.ResponseWriter, r *http.Request) {
 	snapshot, err := h.api.Snapshot(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, snapshot)
+}
+
+func (h *httpHandler) handlePluginReload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeMethodNotAllowed(w)
+		return
+	}
+
+	snapshot, err := h.api.ReloadPlugins(r.Context())
+	if err != nil {
+		writeError(w, statusFromError(err), err)
 		return
 	}
 	writeJSON(w, http.StatusOK, snapshot)
@@ -250,6 +267,8 @@ func statusFromError(err error) int {
 		return http.StatusRequestTimeout
 	case errors.Is(err, ErrScopeNotFound), errors.Is(err, ErrModuleNotFound), errors.Is(err, ErrPluginNotFound), errors.Is(err, ErrBrokerNotFound):
 		return http.StatusNotFound
+	case errors.Is(err, ErrPluginReloadUnavailable):
+		return http.StatusConflict
 	case errors.Is(err, ErrInvalidScope), errors.Is(err, ErrScopeConflict), errors.Is(err, ErrLastScope):
 		return http.StatusBadRequest
 	default:
