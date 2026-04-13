@@ -2,8 +2,11 @@ package controlplane
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -31,8 +34,9 @@ var _ API = (*Service)(nil)
 
 // Service хранит in-memory projection operator-конфигурации.
 type Service struct {
-	mu       sync.RWMutex
-	snapshot Snapshot
+	mu          sync.RWMutex
+	snapshot    Snapshot
+	persistPath string
 }
 
 // NewService создаёт control-plane projection со snapshot по умолчанию.
@@ -40,6 +44,23 @@ func NewService() *Service {
 	return &Service{
 		snapshot: defaultSnapshot(),
 	}
+}
+
+// NewPersistentService создаёт control-plane projection с file-backed snapshot.
+func NewPersistentService(path string) (*Service, error) {
+	if path == "" {
+		return NewService(), nil
+	}
+
+	snapshot, err := loadSnapshotFromFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Service{
+		snapshot:    snapshot,
+		persistPath: path,
+	}, nil
 }
 
 // Health подтверждает готовность in-memory projection.
@@ -83,13 +104,16 @@ func (s *Service) CreateScope(ctx context.Context, scope ScopePreset) (ScopePres
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	next := cloneSnapshot(s.snapshot)
 	id := ScopeKey(scope)
-	if existing, index := findScopeLocked(s.snapshot.Scopes, id); index >= 0 {
+	if existing, index := findScopeLocked(next.Scopes, id); index >= 0 {
 		return cloneScope(existing), nil
 	}
 
-	s.snapshot.Scopes = append(s.snapshot.Scopes, scope)
-	s.touchLocked()
+	next.Scopes = append(next.Scopes, scope)
+	if err := s.commitLocked(next); err != nil {
+		return ScopePreset{}, err
+	}
 	return cloneScope(scope), nil
 }
 
@@ -102,7 +126,8 @@ func (s *Service) UpdateScopeTags(ctx context.Context, id string, tags []string)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	scope, index := findScopeLocked(s.snapshot.Scopes, id)
+	next := cloneSnapshot(s.snapshot)
+	scope, index := findScopeLocked(next.Scopes, id)
 	if index < 0 {
 		return ScopePreset{}, ErrScopeNotFound
 	}
@@ -111,13 +136,15 @@ func (s *Service) UpdateScopeTags(ctx context.Context, id string, tags []string)
 	updated.Tags = normalizeTags(tags)
 	updatedID := ScopeKey(updated)
 	if updatedID != id {
-		if _, conflictIndex := findScopeLocked(s.snapshot.Scopes, updatedID); conflictIndex >= 0 {
+		if _, conflictIndex := findScopeLocked(next.Scopes, updatedID); conflictIndex >= 0 {
 			return ScopePreset{}, ErrScopeConflict
 		}
 	}
 
-	s.snapshot.Scopes[index] = updated
-	s.touchLocked()
+	next.Scopes[index] = updated
+	if err := s.commitLocked(next); err != nil {
+		return ScopePreset{}, err
+	}
 	return cloneScope(updated), nil
 }
 
@@ -130,17 +157,17 @@ func (s *Service) DeleteScope(ctx context.Context, id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	_, index := findScopeLocked(s.snapshot.Scopes, id)
+	next := cloneSnapshot(s.snapshot)
+	_, index := findScopeLocked(next.Scopes, id)
 	if index < 0 {
 		return ErrScopeNotFound
 	}
-	if len(s.snapshot.Scopes) <= 1 {
+	if len(next.Scopes) <= 1 {
 		return ErrLastScope
 	}
 
-	s.snapshot.Scopes = append(s.snapshot.Scopes[:index], s.snapshot.Scopes[index+1:]...)
-	s.touchLocked()
-	return nil
+	next.Scopes = append(next.Scopes[:index], next.Scopes[index+1:]...)
+	return s.commitLocked(next)
 }
 
 // UpdateModule обновляет operator-facing module-control.
@@ -152,7 +179,8 @@ func (s *Service) UpdateModule(ctx context.Context, id string, patch ModulePatch
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for i, module := range s.snapshot.Modules {
+	next := cloneSnapshot(s.snapshot)
+	for i, module := range next.Modules {
 		if module.ID != id {
 			continue
 		}
@@ -180,8 +208,10 @@ func (s *Service) UpdateModule(ctx context.Context, id string, patch ModulePatch
 		if patch.LatencyBudgetMS != nil && *patch.LatencyBudgetMS > 0 {
 			module.LatencyBudgetMS = *patch.LatencyBudgetMS
 		}
-		s.snapshot.Modules[i] = module
-		s.touchLocked()
+		next.Modules[i] = module
+		if err := s.commitLocked(next); err != nil {
+			return ModuleControl{}, err
+		}
 		return cloneModule(module), nil
 	}
 
@@ -197,7 +227,8 @@ func (s *Service) UpdatePlugin(ctx context.Context, id string, patch PluginPatch
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for i, plugin := range s.snapshot.Plugins {
+	next := cloneSnapshot(s.snapshot)
+	for i, plugin := range next.Plugins {
 		if plugin.ID != id {
 			continue
 		}
@@ -217,8 +248,10 @@ func (s *Service) UpdatePlugin(ctx context.Context, id string, patch PluginPatch
 			}
 			plugin.Capabilities = capabilities
 		}
-		s.snapshot.Plugins[i] = plugin
-		s.touchLocked()
+		next.Plugins[i] = plugin
+		if err := s.commitLocked(next); err != nil {
+			return PluginControl{}, err
+		}
 		return clonePlugin(plugin), nil
 	}
 
@@ -234,21 +267,86 @@ func (s *Service) CycleBrokerMode(ctx context.Context, id string) (BrokerLane, e
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for i, broker := range s.snapshot.Brokers {
+	next := cloneSnapshot(s.snapshot)
+	for i, broker := range next.Brokers {
 		if broker.ID != id {
 			continue
 		}
 		broker.Mode, broker.Status = rotateBrokerMode(broker.Mode)
-		s.snapshot.Brokers[i] = broker
-		s.touchLocked()
+		next.Brokers[i] = broker
+		if err := s.commitLocked(next); err != nil {
+			return BrokerLane{}, err
+		}
 		return cloneBroker(broker), nil
 	}
 
 	return BrokerLane{}, ErrBrokerNotFound
 }
 
-func (s *Service) touchLocked() {
-	s.snapshot.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+func (s *Service) commitLocked(snapshot Snapshot) error {
+	snapshot.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	if s.persistPath != "" {
+		if err := saveSnapshotToFile(s.persistPath, snapshot); err != nil {
+			return err
+		}
+	}
+	s.snapshot = snapshot
+	return nil
+}
+
+func loadSnapshotFromFile(path string) (Snapshot, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return defaultSnapshot(), nil
+		}
+		return Snapshot{}, fmt.Errorf("controlplane: read snapshot %q: %w", path, err)
+	}
+
+	var snapshot Snapshot
+	if err := json.Unmarshal(raw, &snapshot); err != nil {
+		return Snapshot{}, fmt.Errorf("controlplane: decode snapshot %q: %w", path, err)
+	}
+	if err := normalizeSnapshotSeed(&snapshot); err != nil {
+		return Snapshot{}, fmt.Errorf("controlplane: validate snapshot %q: %w", path, err)
+	}
+	if snapshot.UpdatedAt == "" {
+		snapshot.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	}
+	return snapshot, nil
+}
+
+func saveSnapshotToFile(path string, snapshot Snapshot) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("controlplane: create state dir for %q: %w", path, err)
+	}
+
+	payload, err := json.MarshalIndent(snapshot, "", "  ")
+	if err != nil {
+		return fmt.Errorf("controlplane: encode snapshot %q: %w", path, err)
+	}
+	payload = append(payload, '\n')
+
+	tmpFile, err := os.CreateTemp(filepath.Dir(path), "controlplane-*.json")
+	if err != nil {
+		return fmt.Errorf("controlplane: create temp snapshot for %q: %w", path, err)
+	}
+	tmpPath := tmpFile.Name()
+	defer func() {
+		_ = os.Remove(tmpPath)
+	}()
+
+	if _, err := tmpFile.Write(payload); err != nil {
+		_ = tmpFile.Close()
+		return fmt.Errorf("controlplane: write temp snapshot for %q: %w", path, err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("controlplane: close temp snapshot for %q: %w", path, err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("controlplane: replace snapshot %q: %w", path, err)
+	}
+	return nil
 }
 
 func normalizeScope(scope ScopePreset) (ScopePreset, error) {

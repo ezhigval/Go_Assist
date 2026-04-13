@@ -2,6 +2,8 @@ package controlplane
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -94,5 +96,105 @@ func TestServiceCycleBrokerAndUpdateModulePlugin(t *testing.T) {
 	}
 	if plugin.Status != PluginStatusEnabled {
 		t.Fatalf("plugin status = %q, want enabled", plugin.Status)
+	}
+}
+
+func TestPersistentServiceReloadsMutationsFromDisk(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state", "controlplane.json")
+	service, err := NewPersistentService(path)
+	if err != nil {
+		t.Fatalf("NewPersistentService returned error: %v", err)
+	}
+
+	ctx := context.Background()
+	created, err := service.CreateScope(ctx, ScopePreset{
+		Segment: "health",
+		Tags:    []string{"focus"},
+	})
+	if err != nil {
+		t.Fatalf("CreateScope returned error: %v", err)
+	}
+
+	enabled := false
+	if _, err := service.UpdateModule(ctx, "tracker", ModulePatch{Enabled: &enabled}); err != nil {
+		t.Fatalf("UpdateModule returned error: %v", err)
+	}
+
+	status := PluginStatusEnabled
+	if _, err := service.UpdatePlugin(ctx, "audit-mirror", PluginPatch{Status: &status}); err != nil {
+		t.Fatalf("UpdatePlugin returned error: %v", err)
+	}
+
+	if _, err := service.CycleBrokerMode(ctx, "runtime-core"); err != nil {
+		t.Fatalf("CycleBrokerMode returned error: %v", err)
+	}
+
+	reloaded, err := NewPersistentService(path)
+	if err != nil {
+		t.Fatalf("NewPersistentService(reload) returned error: %v", err)
+	}
+
+	scopes, err := reloaded.ListScopes(ctx)
+	if err != nil {
+		t.Fatalf("ListScopes returned error: %v", err)
+	}
+	foundScope := false
+	for _, scope := range scopes {
+		if ScopeKey(scope) == ScopeKey(created) {
+			foundScope = true
+			break
+		}
+	}
+	if !foundScope {
+		t.Fatalf("reloaded scopes missing %q", ScopeKey(created))
+	}
+
+	snapshot, err := reloaded.Snapshot(ctx)
+	if err != nil {
+		t.Fatalf("Snapshot returned error: %v", err)
+	}
+
+	var tracker ModuleControl
+	for _, module := range snapshot.Modules {
+		if module.ID == "tracker" {
+			tracker = module
+			break
+		}
+	}
+	if tracker.ID == "" || tracker.Enabled {
+		t.Fatalf("reloaded tracker module = %+v, want disabled tracker", tracker)
+	}
+
+	var audit PluginControl
+	for _, plugin := range snapshot.Plugins {
+		if plugin.ID == "audit-mirror" {
+			audit = plugin
+			break
+		}
+	}
+	if audit.ID == "" || audit.Status != PluginStatusEnabled {
+		t.Fatalf("reloaded audit plugin = %+v, want enabled", audit)
+	}
+
+	var runtimeCore BrokerLane
+	for _, broker := range snapshot.Brokers {
+		if broker.ID == "runtime-core" {
+			runtimeCore = broker
+			break
+		}
+	}
+	if runtimeCore.ID == "" || runtimeCore.Mode != BrokerModeNATS || runtimeCore.Status != BrokerStatusPlanned {
+		t.Fatalf("reloaded runtime-core broker = %+v, want nats/planned", runtimeCore)
+	}
+}
+
+func TestPersistentServiceRejectsBrokenSnapshotFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "broken.json")
+	if err := os.WriteFile(path, []byte("{broken"), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	if _, err := NewPersistentService(path); err == nil {
+		t.Fatal("NewPersistentService returned nil error for broken snapshot")
 	}
 }

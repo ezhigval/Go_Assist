@@ -14,7 +14,11 @@ import (
 
 func main() {
 	addr := getEnv("CONTROL_PLANE_ADDR", ":8080")
-	service := controlplane.NewService()
+	statePath := getEnv("CONTROL_PLANE_STATE_PATH", "data/controlplane/snapshot.json")
+	service, err := controlplane.NewPersistentService(statePath)
+	if err != nil {
+		log.Fatalf("controlplane: init service failed: %v", err)
+	}
 	server := &http.Server{
 		Addr:              addr,
 		Handler:           controlplane.NewHandler(service),
@@ -23,7 +27,7 @@ func main() {
 
 	errCh := make(chan error, 1)
 	go func() {
-		log.Printf("controlplane: listening on %s", addr)
+		log.Printf("controlplane: listening on %s (state: %s)", addr, statePath)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			errCh <- err
 		}
