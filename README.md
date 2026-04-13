@@ -110,7 +110,7 @@ Data Layer (PostgreSQL | Redis | Vector DB | Local Storage)
 
 **Особенности:**
 - Контекстная навигация: переключай сферы жизни в один клик
-- `Control Plane`: broker lanes, plugin registry и scope presets уже конфигурируются в web-слое без правки кода; при необходимости web/PWA может работать против отдельного Go-backed operator API (`cmd/controlplane`), а дефолтный snapshot для backend и local fallback хранится в общем `controlplane/default_snapshot.json`. Первый экран dashboard теперь также показывает operator diagnostics из `/api/health`: mode, snapshot freshness, persist path и plugin manifest source/count.
+- `Control Plane`: broker lanes, plugin registry и scope presets уже конфигурируются в web-слое без правки кода; при необходимости web/PWA может работать против отдельного Go-backed operator API (`cmd/controlplane`), а дефолтный snapshot для backend и local fallback хранится в общем `controlplane/default_snapshot.json`. Первый экран dashboard теперь также показывает operator diagnostics из `/api/health`: mode, snapshot freshness, persist path и plugin manifest source/count, а module/plugin cards позволяют редактировать операторские параметры прямо из UI.
 - Визуализация связей: карточки показывают связанные сущности
 - Офлайн-первый: кэширование, синхронизация при появлении сети
 - Модульный UI: компоненты = бэкенд-модули, переиспользование 90%+

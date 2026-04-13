@@ -46,6 +46,10 @@
 
 - [2026-04-13] | `frontend/src/types/control-plane.ts`, `frontend/src/lib/api.ts`, `frontend/src/modules/control-plane/ControlPlaneDashboard.tsx`, `frontend/src/test/control-plane.spec.tsx`, `frontend/tests/e2e/smoke.spec.ts`, `frontend/README.md`, `README.md`, `ROADMAP.md` | Web control plane начал использовать полный контракт `/api/health`: первый экран теперь показывает `backend online` vs `local fallback`, mode, snapshot freshness, persist path и source/count plugin manifests; это превращает backend diagnostics в операторский UI signal, а не только JSON endpoint | §4 C1, §5 V1, §7
 
+## [2026-04-13] v2.0: editable module and plugin overrides in web control plane
+
+- [2026-04-13] | `frontend/src/modules/control-plane/ControlPlaneDashboard.tsx`, `frontend/src/test/control-plane.spec.tsx`, `frontend/README.md`, `README.md`, `ROADMAP.md` | Web control plane перестал быть только обзорным: module cards теперь сохраняют `dispatchMode`, `consumerGroup`, `allowedScopes`, `tags`, `latencyBudgetMs`, а plugin cards — `description` и `capabilities`; всё идёт через уже существующий backend/local fallback patch-contract и покрыто frontend-тестами | §4 C1, §5 V1, §7
+
 ---
 
 ## [2026-04-12] v2.0: web control plane UX criteria

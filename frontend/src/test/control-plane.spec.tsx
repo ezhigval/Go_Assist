@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ScopeProvider } from '../context/ScopeContext';
@@ -8,6 +8,12 @@ import { ControlPlaneDashboard } from '../modules/control-plane/ControlPlaneDash
 describe('ControlPlaneDashboard', () => {
   beforeEach(() => {
     api.resetControlPlaneState();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('offline');
+      })
+    );
   });
 
   afterEach(() => {
@@ -40,10 +46,39 @@ describe('ControlPlaneDashboard', () => {
     const button = await screen.findByRole('button', { name: 'toggle-module-tracker' });
     await user.click(button);
 
-    await waitFor(async () => {
-      const snapshot = await api.getControlPlane();
+    await waitFor(() => {
+      const snapshot = api.getControlPlaneSnapshot();
       const tracker = snapshot.modules.find((module) => module.id === 'tracker');
       expect(tracker?.enabled).toBe(false);
+    });
+
+    expect(await screen.findByText('Config updated')).toBeInTheDocument();
+  });
+
+  it('persists module settings edits into local control plane state', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ScopeProvider apiClient={api}>
+        <ControlPlaneDashboard platform="web" />
+      </ScopeProvider>
+    );
+
+    await user.selectOptions(await screen.findByLabelText('module-dispatch-tracker'), 'fanout');
+    await user.clear(screen.getByLabelText('module-group-tracker'));
+    await user.type(screen.getByLabelText('module-group-tracker'), 'tracker-priority');
+    await user.clear(screen.getByLabelText('module-latency-tracker'));
+    await user.type(screen.getByLabelText('module-latency-tracker'), '320');
+    await user.click(screen.getByRole('button', { name: 'toggle-module-scope-tracker-travel' }));
+    await user.click(screen.getByRole('button', { name: 'save-module-tracker' }));
+
+    await waitFor(() => {
+      const snapshot = api.getControlPlaneSnapshot();
+      const tracker = snapshot.modules.find((module) => module.id === 'tracker');
+      expect(tracker?.dispatchMode).toBe('fanout');
+      expect(tracker?.consumerGroup).toBe('tracker-priority');
+      expect(tracker?.latencyBudgetMs).toBe(320);
+      expect(tracker?.allowedScopes).toContain('travel');
     });
 
     expect(await screen.findByText('Config updated')).toBeInTheDocument();
@@ -86,6 +121,33 @@ describe('ControlPlaneDashboard', () => {
     expect(screen.getByText('plugins/manifests')).toBeInTheDocument();
   });
 
+  it('persists plugin settings edits into local control plane state', async () => {
+    render(
+      <ScopeProvider apiClient={api}>
+        <ControlPlaneDashboard platform="web" />
+      </ScopeProvider>
+    );
+
+    fireEvent.change(await screen.findByLabelText('plugin-description-finance-sync'), {
+      target: { value: 'Ledger sync for staged operator rollout.' },
+    });
+    fireEvent.change(screen.getByLabelText('plugin-capability-actions-finance-sync-0'), {
+      target: { value: 'create_transaction, reconcile' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'toggle-plugin-scope-finance-sync-0-assets' }));
+    fireEvent.click(screen.getByRole('button', { name: 'save-plugin-finance-sync' }));
+
+    await waitFor(() => {
+      const snapshot = api.getControlPlaneSnapshot();
+      const financeSync = snapshot.plugins.find((plugin) => plugin.id === 'finance-sync');
+      expect(financeSync?.description).toBe('Ledger sync for staged operator rollout.');
+      expect(financeSync?.capabilities[0]?.actions).toEqual(['create_transaction', 'reconcile']);
+      expect(financeSync?.capabilities[0]?.scopes).toContain('assets');
+    });
+
+    expect(await screen.findByText('Config updated')).toBeInTheDocument();
+  });
+
   it('meets minimal web ux criteria for operator flow', async () => {
     const user = userEvent.setup();
 
@@ -101,13 +163,15 @@ describe('ControlPlaneDashboard', () => {
     expect(screen.getByRole('button', { name: 'add-scope' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'rotate-broker-runtime-core' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'toggle-module-tracker' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'save-module-tracker' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'rotate-plugin-finance-sync' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'save-plugin-finance-sync' })).toBeInTheDocument();
     expect(await screen.findByText('Control plane booted')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'rotate-broker-runtime-core' }));
 
-    await waitFor(async () => {
-      const snapshot = await api.getControlPlane();
+    await waitFor(() => {
+      const snapshot = api.getControlPlaneSnapshot();
       const runtimeLane = snapshot.brokers.find((broker) => broker.id === 'runtime-core');
       expect(runtimeLane?.mode).toBe('nats');
     });

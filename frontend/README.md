@@ -15,8 +15,8 @@ Modulr Frontend is a comprehensive React-based application that runs on multiple
 
 Текущий реализованный web/PWA слой — это `v2.0 Control Plane`:
 - broker lanes с consumer-group конфигурацией и статусами rollout;
-- module dispatch matrix для admission / queue mode;
-- plugin registry для `process|wasm` manifests;
+- module dispatch matrix для admission / queue mode с inline-редактированием dispatch/group/scope/tag/latency;
+- plugin registry для `process|wasm` manifests с operator-редактированием description/capabilities;
 - scope presets и quick tags с local persistence fallback;
 - единый seed-артефакт `../controlplane/default_snapshot.json` для web fallback и Go-backed operator API;
 - `npm run verify` покрывает type-check, vitest и production build.
@@ -27,6 +27,8 @@ Modulr Frontend is a comprehensive React-based application that runs on multiple
 - первый экран без прокрутки показывает `health`, `platform`, `active scope`, backend-mode (`memory|persistent|fallback`) и ключевые runtime metrics;
 - first-screen snapshot поднимается синхронно из local control-plane state, чтобы operator flow не зависел от network round-trip;
 - `/api/health` прокидывает в UI `snapshot freshness`, `persist path`, `plugin manifest source/count`; при недоступности backend UI явно переключается в `local fallback`;
+- module cards позволяют править `dispatchMode`, `consumerGroup`, `allowedScopes`, `tags`, `latencyBudgetMs` и сохранять это в snapshot без ручной JSON-правки;
+- plugin cards позволяют править `description` и `capabilities` поверх status-cycle, сохраняя operator overrides в backend/local fallback;
 - все мутационные действия имеют явные текстовые/ARIA-имена: add scope, rotate broker, toggle module, rotate plugin;
 - локальный dev-режим остаётся операбельным без backend: broker/module/plugin/scope изменения пишутся в local snapshot;
 - оператор получает мгновенную обратную связь через live event trace (`Control plane booted`, `Config updated`);
